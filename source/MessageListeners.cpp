@@ -1,14 +1,14 @@
 #include "Settings.h"
 
-#undef GetModuleHandle
+#include "ShaderManager.h"
 
 const SKSE::LoadInterface* skse;
 
 void SKSEMessageListener(SKSE::MessagingInterface::Message* a_msg)
 {
-	// If all plugins have been loaded
-	if (a_msg->type == SKSE::MessagingInterface::kPostLoad) 
+	// If the data handler has loaded all its forms
+	if (a_msg->type == SKSE::MessagingInterface::kDataLoaded) 
 	{
-
+		LMU::ShaderManager::InitSingleton();
 	}
 }

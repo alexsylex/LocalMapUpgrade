@@ -2,7 +2,6 @@
 
 #if defined(SKSE_SUPPORT_XBYAK)
 
-#include <Psapi.h>
 #include <xbyak/xbyak.h>
 
 #include "SKSE/Trampoline.h"
@@ -52,7 +51,7 @@ namespace hooks
 			asmCode{ a_codeGen.getCode(), a_codeGen.getCode() + a_codeGen.getSize() }
 		{ }
 
-		Hook(std::uintptr_t a_src, std::uintptr_t a_dst) : 
+		Hook(std::uintptr_t a_src, std::uintptr_t a_dst) :
 			size{ getSizeForSrc() }, src{ a_src }, dst{ a_dst }
 		{ }
 
@@ -138,71 +137,19 @@ namespace hooks
 	{
 	public:
 
-		// Reference: BranchTrampoline::Create() of https://github.com/ianpatt/skse64/blob/master/skse64_common/BranchTrampoline.cpp
-		CustomTrampoline(const std::string_view& a_name, void* a_module, std::size_t a_size) :
-			Trampoline{ a_name }
-		{
-			// search backwards from module base
-			auto moduleBase = reinterpret_cast<std::uintptr_t>(a_module);
-			std::uintptr_t addr = moduleBase;
-			std::uintptr_t maxDisplacement = 0x80000000 - (1024 * 1024 * 128);	// largest 32-bit displacement with 128MB scratch space
-			std::uintptr_t lowestOKAddress = (moduleBase >= maxDisplacement) ? moduleBase - maxDisplacement : 0;
-			addr--;
-
-			void* base = nullptr;
-
-			while (!base)
-			{
-				MEMORY_BASIC_INFORMATION info;
-
-				if (!VirtualQuery((void*)addr, &info, sizeof(info)))
-				{
-					break;
-				}
-
-				if (info.State == MEM_FREE)
-				{
-					// free block, big enough?
-					if (info.RegionSize >= a_size)
-					{
-						// try to allocate it
-						addr = reinterpret_cast<std::uintptr_t>(info.BaseAddress) + info.RegionSize - a_size;
-
-						base = VirtualAlloc(reinterpret_cast<void*>(addr), a_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-					}
-				}
-
-				// move back and try again
-				if (!base)
-				{
-					addr = ((uintptr_t)info.BaseAddress) - 1;
-				}
-
-				if (addr < lowestOKAddress)
-				{
-					break;
-				}
-			}
-
-			inst->set_trampoline(base, a_size,
-				[](void* a_mem, std::size_t)
-				{
-					SKSE::WinAPI::VirtualFree(a_mem, 0, MEM_RELEASE);
-				});
-		}
+		CustomTrampoline(const std::string_view& a_name, void* a_module, std::size_t a_size);
 	};
 
 	class SigScanner
 	{
 	public:
 
-		 template <SKSE::stl::nttp::string str>
-		static std::uintptr_t FindPattern(SKSE::WinAPI::HMODULE a_moduleHandle)
+		static std::pair<std::uintptr_t, std::size_t> GetModuleInfo(REX::W32::HMODULE a_moduleHandle);
+
+		template <SKSE::stl::nttp::string str>
+		static std::uintptr_t FindPattern(REX::W32::HMODULE a_moduleHandle)
 		{
-			MODULEINFO moduleInfo;
-			GetModuleInformation(GetCurrentProcess(), reinterpret_cast<HMODULE>(a_moduleHandle), &moduleInfo, sizeof(MODULEINFO));
-			auto base = reinterpret_cast<std::uintptr_t>(moduleInfo.lpBaseOfDll);
-			std::size_t size = moduleInfo.SizeOfImage;
+			auto [base, size] = GetModuleInfo(a_moduleHandle);
 
 			std::size_t patternLength = (str.length() + 1) / 3; // 2/3 useful chars (1 space between byte chars)
 			auto pattern = REL::make_pattern<str>();

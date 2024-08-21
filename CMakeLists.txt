@@ -5,8 +5,8 @@ cmake_minimum_required(VERSION 3.21)
 ########################################################################################################################
 
 project(
-	CommonLibSSE-NG-Plugin-Template
-	VERSION 1.0.0
+	LocalMapUpgrade
+	VERSION 0.1.0
 	LANGUAGES CXX
 )
 
@@ -30,7 +30,15 @@ source_group(
 	FILES
 		${headers}
 		${sources}
-)
+) 
+
+function(make_includable input_file output_file)
+    file(READ ${input_file} content)
+    set(content "R\"${delim}(\n${content})${delim}\"")
+    file(WRITE ${output_file} "${content}")
+endfunction(make_includable)
+
+make_includable(shaders/ISLocalMap.hlsl include/ISLocalMap.hlsl.h)
 
 ########################################################################################################################
 ## Configure target DLL
@@ -49,7 +57,7 @@ target_include_directories(
 		${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(
+target_link_libraries( 
 	${PROJECT_NAME}
 	PRIVATE
 		CommonLibSSE::CommonLibSSE
@@ -71,6 +79,25 @@ target_precompile_headers(
 	PRIVATE
 		include/PCH.h
 )
+
+target_sources(
+	${PROJECT_NAME}
+	INTERFACE
+	"$<BUILD_INTERFACE:CommonLibSSE.natvis>"
+)
+
+########################################################################################################################
+## Pre-link clean-up
+########################################################################################################################
+
+file(GLOB PRE_LINK_CLEAN_DIRS "${VCPKG_INSTALLED_DIR}/*")
+list(REMOVE_ITEM PRE_LINK_CLEAN_DIRS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+
+foreach(PRE_LINK_CLEAN_DIR ${PRE_LINK_CLEAN_DIRS})
+	add_custom_command(TARGET ${PROJECT_NAME} PRE_LINK
+		COMMAND ${CMAKE_COMMAND} -E rm -rf "${PRE_LINK_CLEAN_DIR}" 
+	)
+endforeach()
 
 ########################################################################################################################
 ## Automatic plugin deployment
