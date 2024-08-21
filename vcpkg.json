@@ -1,0 +1,11 @@
+{
+    "name": "commonlibsse-ng-plugin-template",
+    "version-string": "1.0.0",
+    "description": "",
+    "homepage": "https://github.com/alexsylex/CommonLibSSE-NG-Plugin-Template",
+    "license": "MIT",
+    "dependencies": [
+        "commonlibsse-ng"
+    ],
+    "builtin-baseline": "8d3649ba34aab36914ddd897958599aa0a91b08e"
+}

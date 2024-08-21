@@ -1,0 +1,1 @@
+# CommonLibSSE-NG-Plugin-Template
