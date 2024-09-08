@@ -34,6 +34,6 @@ namespace LMU
 		REX::W32::ID3D11PixelShader* colorNoFogOfWarProgram = nullptr;
 
 		bool fogOfWarEnabled = true;
-		bool colorEnabled = false;
+		bool colorEnabled = true;
 	};
 }

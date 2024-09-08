@@ -20,7 +20,7 @@
             "name": "commonlibsse-config",
             "hidden": true,
             "environment": {
-                "COMMONLIBSSE_PLATFORM": "-DWIN32_LEAN_AND_MEAN -DNOMINMAX -DENABLE_COMMONLIBSSE_TESTING",
+                "COMMONLIBSSE_PLATFORM": "-DWIN32_LEAN_AND_MEAN -DNOMINMAX",
                 "COMMONLIBSSE_TEXT": "-DUNICODE -D_UNICODE"
             },
             "cacheVariables": {
