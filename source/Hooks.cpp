@@ -1,14 +1,23 @@
 #include "Hooks.h"
 
+#include "RE/L/LocalMapMenu.h"
+
 #include "Settings.h"
 
+#include "PlayerMapMarkerManager.h"
 #include "ShaderManager.h"
 
 namespace RE
 {
-	class MapMarker;
+	RefHandle AddPlayerMapMarker(BSTArray<MapMenuMarker>& a_mapMarkers)
+	{
+		RefHandle refHandle;
+		static REL::Relocation<RefHandle&(*)(RefHandle&, BSTArray<MapMenuMarker>&)> func{RELOCATION_ID(52186, 53078)};
+		func(refHandle, a_mapMarkers);
+		return refHandle;
+	}
 
-	void PlayerCharacter__SetPlayerMapMarker(PlayerCharacter* a_player, const NiPoint3& a_position, const TESForm& a_worldOrCell)
+	void PlayerCharacter__SetPlayerMapMarker(PlayerCharacter* a_player, const NiPoint3& a_position, const TESForm* a_worldOrCell)
 	{
 		using func_t = decltype(&PlayerCharacter__SetPlayerMapMarker);
 		static REL::Relocation<func_t> func{ RELOCATION_ID(39458, 40535) };
@@ -30,22 +39,15 @@ namespace RE
 	}
 }
 
-RE::RefHandle& AddCustomMarker(RE::RefHandle& a_refHandle, RE::BSTArray<RE::MapMarker>& a_mapMarkers)
-{
-	auto factory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESObjectREFR>();
-	RE::TESObjectREFR* objRef = factory ? factory->Create() : nullptr;
-	RE::ObjectRefHandle objRefHandle = objRef->CreateRefHandle();
-
-	return a_refHandle;
-}
-
 bool CanProcess(RE::LocalMapMenu::InputHandler* a_localMapInputHandler, RE::InputEvent* a_event)
 {
 	bool canProcess = hooks::LocalMapMenu::InputHandler::CanProcess(a_localMapInputHandler, a_event);
 
 	if (!canProcess)
 	{
-		if (a_event->GetDevice() == RE::INPUT_DEVICE::kMouse && a_event->GetEventType() == RE::INPUT_EVENT_TYPE::kButton)
+		if (a_localMapInputHandler->localMapMenu->GetRuntimeData().controlsReady &&
+			a_event->GetDevice() == RE::INPUT_DEVICE::kMouse &&
+			a_event->GetEventType() == RE::INPUT_EVENT_TYPE::kButton)
 		{
 			canProcess = true;
 		}
@@ -58,35 +60,53 @@ bool ProcessButton(RE::LocalMapMenu::InputHandler* a_localMapInputHandler, RE::B
 {
 	bool retval = hooks::LocalMapMenu::InputHandler::ProcessButton(a_localMapInputHandler, a_event);
 
-	RE::ButtonEvent* buttonEvent = a_event->AsButtonEvent();
-
-	if (buttonEvent && buttonEvent->GetDevice() == RE::INPUT_DEVICE::kMouse && buttonEvent->GetIDCode() == 1)
+	if (a_localMapInputHandler->localMapMenu->GetRuntimeData().controlsReady)
 	{
-		RE::LocalMapMenu* localMapMenu = a_localMapInputHandler->localMapMenu;
-		RE::NiCamera* localMapCamera = localMapMenu->localCullingProcess.GetLocalMapCamera()->camera.get();
-
-		RE::MenuCursor* menuCursor = RE::MenuCursor::GetSingleton();
-		RE::NiPoint3 markerPos;
-		RE::NiPoint3 markerDir;
-		RE::BSGraphics::State* gfxState = RE::BSGraphics::State::GetSingleton();
-		localMapCamera->WindowPointToRay(menuCursor->cursorPosX, menuCursor->cursorPosY, markerPos, markerDir, gfxState->screenWidth, gfxState->screenHeight);
-
-		auto player = RE::PlayerCharacter::GetSingleton();
-		auto parentCell = player->GetParentCell();
-
-		markerPos.z = player->GetPosition().z;
-
-		if (parentCell->IsInteriorCell())
+		RE::ButtonEvent* buttonEvent = a_event->AsButtonEvent();
+		if (buttonEvent &&
+			buttonEvent->GetDevice() == RE::INPUT_DEVICE::kMouse &&
+			buttonEvent->GetIDCode() == 1)
 		{
-			RE::PlayerCharacter__SetPlayerMapMarker(player, markerPos, *player->GetParentCell());
-		}
-		else
-		{
-			RE::PlayerCharacter__SetPlayerMapMarker(player, markerPos, *player->GetWorldspace());
-		}
+			RE::LocalMapMenu* localMapMenu = a_localMapInputHandler->localMapMenu;
+			RE::MenuCursor* menuCursor = RE::MenuCursor::GetSingleton();
+			float cursorX = menuCursor->cursorPosX - localMapMenu->topLeft.x;
+			float cursorY = menuCursor->cursorPosY - localMapMenu->topLeft.y;
+			RE::NiCamera* localMapCamera = localMapMenu->localCullingProcess.GetLocalMapCamera()->camera.get();
+			float localMapViewWidth = localMapMenu->bottomRight.x - localMapMenu->topLeft.x;
+			float localMapViewHeight = localMapMenu->bottomRight.y - localMapMenu->topLeft.y;
 
-		RE::TESObjectREFR* playerMapMarker = player->GetPlayerRuntimeData().playerMapMarker.get().get();
-		RE::PlayerCharacter__SetMarkerTeleportData(player, playerMapMarker, player->GetInfoRuntimeData().playerMarkerPath, true);
+			RE::NiPoint3 rayOrigin;
+			RE::NiPoint3 rayDir;
+			if (localMapCamera->WindowPointToRay(cursorX, cursorY, rayOrigin, rayDir, localMapViewWidth, localMapViewHeight))
+			{
+				RE::NiPoint3 markerPos;
+				if (LMU::PlayerMapMarkerManager::GetRayCollisionPosition(rayOrigin, rayDir, markerPos))
+				{
+					auto player = RE::PlayerCharacter::GetSingleton();
+					RE::TES* tes = RE::TES::GetSingleton();
+
+					if (tes->interiorCell)
+					{
+						RE::PlayerCharacter__SetPlayerMapMarker(player, markerPos, tes->interiorCell);
+					}
+					else
+					{
+						RE::PlayerCharacter__SetPlayerMapMarker(player, markerPos, player->GetWorldspace());
+					}
+
+					RE::TESObjectREFR* playerMapMarker = player->GetPlayerRuntimeData().playerMapMarker.get().get();
+					RE::PlayerCharacter__SetMarkerTeleportData(player, playerMapMarker, player->GetInfoRuntimeData().playerMarkerPath, true);
+
+					AddPlayerMapMarker(localMapMenu->mapMarkers);
+					auto ui = RE::UI::GetSingleton();
+					if (ui->IsMenuOpen(RE::MapMenu::MENU_NAME))
+					{
+						auto mapMenu = ui->GetMenu<RE::MapMenu>();
+						AddPlayerMapMarker(mapMenu->GetRuntimeData2()->mapMarkers);
+					}
+				}
+			}		
+		}
 	}
 
 	return retval;
