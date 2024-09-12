@@ -23,7 +23,6 @@ namespace LMU
 			return &singleton;
 		}
 
-		static bool GetRayCollisionPosition(const RE::NiPoint3& a_rayOrigin, const RE::NiPoint3& a_rayDir,
-											RE::NiPoint3& a_rayCollision);
+		void PlaceMarker(RE::LocalMapMenu* a_localMapMenu, float a_cursorPosX, float a_cursorPosY);
 	};
 }
