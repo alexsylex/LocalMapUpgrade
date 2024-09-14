@@ -12,7 +12,9 @@ bool CanProcess(RE::LocalMapMenu::InputHandler* a_localMapInputHandler, RE::Inpu
 
 	if (!canProcess)
 	{
-		if (a_localMapInputHandler->localMapMenu->GetRuntimeData().controlsReady &&
+		RE::LocalMapMenu::RUNTIME_DATA& localMapMenu = a_localMapInputHandler->localMapMenu->GetRuntimeData();
+
+		if (localMapMenu.showingMap && localMapMenu.controlsReady &&
 			a_event->GetDevice() == RE::INPUT_DEVICE::kMouse &&
 			a_event->GetEventType() == RE::INPUT_EVENT_TYPE::kButton)
 		{
@@ -27,7 +29,9 @@ bool ProcessButton(RE::LocalMapMenu::InputHandler* a_localMapInputHandler, RE::B
 {
 	bool retval = hooks::LocalMapMenu::InputHandler::ProcessButton(a_localMapInputHandler, a_event);
 
-	if (a_localMapInputHandler->localMapMenu->GetRuntimeData().controlsReady)
+	RE::LocalMapMenu::RUNTIME_DATA& localMapMenu = a_localMapInputHandler->localMapMenu->GetRuntimeData();
+
+	if (localMapMenu.showingMap && localMapMenu.controlsReady)
 	{
 		RE::ButtonEvent* buttonEvent = a_event->AsButtonEvent();
 		if (buttonEvent &&
