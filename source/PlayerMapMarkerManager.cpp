@@ -3,6 +3,8 @@
 #include "RE/L/LocalMapMenu.h"
 #include "RE/N/NiPick.h"
 
+#undef MessageBox
+
 namespace RE
 {
 	void PlayerCharacter__SetMarkerTeleportData(PlayerCharacter* a_player, TESObjectREFR* a_marker, PlayerCharacter::TeleportPath* a_teleportPath, bool a_ignoreLocks)
@@ -47,7 +49,127 @@ namespace RE
 
 namespace LMU
 {
+	bool PickObjectInNode(RE::NiPick* a_pick, RE::NiNode* a_node, const RE::NiPoint3& a_rayOrigin, const RE::NiPoint3& a_rayDir)
+	{
+		a_pick->root = (RE::NiPointer<RE::NiAVObject>)a_node;
+
+		if (a_pick->PickObjects(a_rayOrigin, a_rayDir))
+		{
+			return true;
+		}
+
+		for (auto& child : a_node->GetChildren()) if (child)
+		{
+			if (auto node = child->AsNode())
+			{
+				if (PickObjectInNode(a_pick, node, a_rayOrigin, a_rayDir))
+				{
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	bool PickObjectInCell(RE::NiPick* a_pick, RE::TESObjectCELL* a_cell, const RE::NiPoint3& a_rayOrigin, const RE::NiPoint3& a_rayDir)
+	{
+		if (a_cell && a_cell->IsAttached())
+		{
+			RE::TESWorldSpace* worldSpace = a_cell->GetRuntimeData().worldSpace;
+
+			bool hasWorldSpaceFixedDimensions = worldSpace && worldSpace->flags.any(RE::TESWorldSpace::Flag::kFixedDimensions);
+
+			RE::NiPointer<RE::NiNode> cell3D = a_cell->GetRuntimeData().loadedData->cell3D;
+
+			if (cell3D)
+			{
+				if (PickObjectInNode(a_pick, cell3D.get(), a_rayOrigin, a_rayDir))
+				{
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
 	bool GetRayCollisionPosition(const RE::NiPoint3& a_rayOrigin, const RE::NiPoint3& a_rayDir,
+		RE::NiPoint3& a_rayCollision)
+	{
+		bool hit = false;
+
+		if (auto pick = RE::malloc<RE::NiPick>())
+		{
+			pick->Ctor();
+			pick->observeCull = true;
+			pick->type = RE::NiPick::PickType::kFindFirst;
+
+			RE::TES* tes = RE::TES::GetSingleton();
+			RE::TESWorldSpace* worldSpace = tes->GetRuntimeData2().worldSpace;
+
+			if (RE::TESObjectCELL* interiorCell = tes->interiorCell)
+			{
+				if (PickObjectInCell(pick, interiorCell, a_rayOrigin, a_rayDir))
+				{
+					a_rayCollision = pick->results[0]->intersect;
+					hit = true;
+				}
+			}
+			else if (worldSpace)
+			{
+				RE::TESObjectCELL* skyCell = worldSpace->GetSkyCell();
+				if (skyCell && skyCell->IsAttached())
+				{
+					if (PickObjectInCell(pick, skyCell, a_rayOrigin, a_rayDir))
+					{
+						a_rayCollision = pick->results[0]->intersect;
+						hit = true;
+					}
+				}
+
+				if (!hit)
+				{
+					for (int gridCellX = 0; gridCellX < tes->gridCells->length; gridCellX++)
+					{
+						for (int gridCellY = 0; gridCellY < tes->gridCells->length; gridCellY++)
+						{
+							RE::TESObjectCELL* cell = tes->gridCells->GetCell(gridCellX, gridCellY);
+							if (cell && cell->IsAttached())
+							{
+								if (PickObjectInCell(pick, cell, a_rayOrigin, a_rayDir))
+								{
+									a_rayCollision = pick->results[0]->intersect;
+									hit = true;
+								}
+							}
+						}
+					}
+				}
+			}
+
+			if (!hit)
+			{
+				if (tes->lodLandRoot)
+				{
+					RE::NiPointer<RE::NiAVObject> landRoot = tes->lodLandRoot->GetChildren()[0];
+					pick->root = landRoot;
+					if (pick->PickObjects(a_rayOrigin, a_rayDir))
+					{
+						a_rayCollision = pick->results[0]->intersect;
+						hit = true;
+					}
+				}
+			}
+
+			pick->Dtor();
+			RE::free(pick);
+		}
+
+		return hit;
+	}
+
+	bool GetRayCollisionPosition2(const RE::NiPoint3& a_rayOrigin, const RE::NiPoint3& a_rayDir,
 								 RE::NiPoint3& a_rayCollision)
 	{
 		bool hit = false;
@@ -58,18 +180,27 @@ namespace LMU
 			pick->observeCull = true;
 			pick->type = RE::NiPick::PickType::kFindFirst;
 
-			if (auto lodRoot = skyrim_cast<RE::NiNode*>(RE::ShadowSceneNode::GetMain()->GetChildren()[2].get()))
-			{
-				if (auto landLod = skyrim_cast<RE::NiNode*>(lodRoot->GetChildren()[0].get()))
-				{
-					pick->root = landLod->GetChildren()[0];
-				}
-			}
+			RE::NiTObjectArray<RE::NiPointer<RE::NiAVObject>>& shadowScenes = RE::ShadowSceneNode::GetMain()->GetChildren();
 
-			hit = pick->PickObjects(a_rayOrigin, a_rayDir);
-			if (hit)
+			if (!shadowScenes.empty())
 			{
-				a_rayCollision = pick->results[0]->intersect;
+				for (std::uint32_t i = 0; i < shadowScenes.size(); i++)
+				{
+					if (auto lodRoot = skyrim_cast<RE::NiNode*>(shadowScenes[i].get()))
+					{
+						RE::NiTObjectArray<RE::NiPointer<RE::NiAVObject>>& lods = lodRoot->GetChildren();
+						if (!lods.empty())
+						{
+							pick->root = lods[0];
+						}
+					}
+
+					if (pick->PickObjects(a_rayOrigin, a_rayDir))
+					{
+						a_rayCollision = pick->results[0]->intersect;
+						hit = true;
+					}
+				}
 			}
 
 			pick->Dtor();
@@ -125,7 +256,7 @@ namespace LMU
 		}
 	}
 
-	void PlayerMapMarkerManager::MessageBoxCallback::Run(Message a_optionIndex)
+	void PlayerMapMarkerManager::MessageBox::Callback::Run(Message a_optionIndex)
 	{
 		auto player = RE::PlayerCharacter::GetSingleton();
 
@@ -137,6 +268,8 @@ namespace LMU
 		case 2: // Remove
 			RE::PlayerCharacter__RemovePlayerMapMarker(player);
 			break;
+		default: // Leave
+			break;
 		}
 	}
 
@@ -144,16 +277,9 @@ namespace LMU
 	{
 		if (RE::PlayerCharacter::GetSingleton()->GetPlayerRuntimeData().playerMapMarker)
 		{
-			if (auto messageBoxCallback = RE::make_smart<MessageBoxCallback>(a_localMapMenu, a_cursorPosX, a_cursorPosY))
-			{
-				RE::BSString title = moveMarkerQuestionTitle;
-				RE::BSTArray<RE::BSString> options;
-				options.push_back(moveMarkerOption);
-				options.push_back(leaveMarkerOption);
-				options.push_back(removeMarkerOption);
+			messageBox.callback->SetData(a_localMapMenu, a_cursorPosX, a_cursorPosY);
 
-				RE::UI__OpenMessageBox(moveMarkerQuestionTitle, messageBoxCallback, 0, 25, 4, options);
-			}
+			RE::UI__OpenMessageBox(messageBox.title, messageBox.callback, 0, 25, 4, messageBox.options);
 		}
 		else
 		{

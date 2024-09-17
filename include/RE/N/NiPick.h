@@ -7,6 +7,8 @@
 
 namespace RE
 {
+	class NiSwitchNode;
+
 	template <class T>
 	class NiTScrapHeapInterface
 	{
