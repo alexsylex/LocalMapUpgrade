@@ -275,6 +275,8 @@ namespace LMU
 
 	void PlayerMapMarkerManager::PlaceMarker(RE::LocalMapMenu* a_localMapMenu, float a_cursorPosX, float a_cursorPosY)
 	{
+		allowPlaceMarker = false;
+
 		if (RE::PlayerCharacter::GetSingleton()->GetPlayerRuntimeData().playerMapMarker)
 		{
 			messageBox.callback->SetData(a_localMapMenu, a_cursorPosX, a_cursorPosY);

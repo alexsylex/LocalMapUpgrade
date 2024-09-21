@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Settings.h"
+
 namespace LMU
 {
 	class ShaderManager
@@ -33,7 +35,7 @@ namespace LMU
 		REX::W32::ID3D11PixelShader* colorProgram = nullptr;
 		REX::W32::ID3D11PixelShader* colorNoFogOfWarProgram = nullptr;
 
-		bool fogOfWarEnabled = true;
-		bool colorEnabled = true;
+		bool colorEnabled = settings::mapmenu::localMapColor;
+		bool fogOfWarEnabled = settings::mapmenu::localMapFogOfWar;
 	};
 }

@@ -5,17 +5,42 @@
 #include "PlayerMapMarkerManager.h"
 #include "ShaderManager.h"
 
+#include "RE/G/GFxValue.h"
 
 bool CanProcess(RE::LocalMapMenu::InputHandler* a_localMapInputHandler, RE::InputEvent* a_event)
 {
+	RE::LocalMapMenu::RUNTIME_DATA& localMapMenu = a_localMapInputHandler->localMapMenu->GetRuntimeData();
+
+	if (localMapMenu.showingMap && localMapMenu.controlsReady)
+	{
+		// Show the place marker buttons
+
+		auto movie = *reinterpret_cast<RE::GFxMovie**&>(localMapMenu.localMapMovie);
+
+		RE::GFxValue bottomBarSetDestinationButton;
+		RE::GFxValue bottomBar;
+		if (localMapMenu.localMapMovie.GetMember("BottomBar", &bottomBar))
+		{
+			bottomBar.GetMember("RightButton", &bottomBarSetDestinationButton);
+			bottomBarSetDestinationButton.SetMember("visible", true);
+		}
+		else if (localMapMenu.localMapMovie.GetMember("_bottomBar", &bottomBar))
+		{
+			RE::GFxValue buttonPanel;
+			bottomBar.GetMember("buttonPanel", &buttonPanel);
+			buttonPanel.GetMember("button5", &bottomBarSetDestinationButton);
+			bottomBarSetDestinationButton.SetMember("_visible", true);
+		}
+	}
+
 	bool canProcess = hooks::LocalMapMenu::InputHandler::CanProcess(a_localMapInputHandler, a_event);
 
 	if (!canProcess)
 	{
-		RE::LocalMapMenu::RUNTIME_DATA& localMapMenu = a_localMapInputHandler->localMapMenu->GetRuntimeData();
+		RE::INPUT_DEVICE device = a_event->GetDevice();
 
 		if (localMapMenu.showingMap && localMapMenu.controlsReady &&
-			a_event->GetDevice() == RE::INPUT_DEVICE::kMouse &&
+			(device == RE::INPUT_DEVICE::kMouse || device == RE::INPUT_DEVICE::kGamepad) &&
 			a_event->GetEventType() == RE::INPUT_EVENT_TYPE::kButton)
 		{
 			canProcess = true;
@@ -27,22 +52,52 @@ bool CanProcess(RE::LocalMapMenu::InputHandler* a_localMapInputHandler, RE::Inpu
 
 bool ProcessButton(RE::LocalMapMenu::InputHandler* a_localMapInputHandler, RE::ButtonEvent* a_event)
 {
-	bool retval = hooks::LocalMapMenu::InputHandler::ProcessButton(a_localMapInputHandler, a_event);
-
 	RE::LocalMapMenu::RUNTIME_DATA& localMapMenu = a_localMapInputHandler->localMapMenu->GetRuntimeData();
+
+	RE::ButtonEvent* buttonEvent = a_event->AsButtonEvent();
+
+	auto userEvents = RE::UserEvents::GetSingleton();
 
 	if (localMapMenu.showingMap && localMapMenu.controlsReady)
 	{
-		RE::ButtonEvent* buttonEvent = a_event->AsButtonEvent();
-		if (buttonEvent &&
-			buttonEvent->GetDevice() == RE::INPUT_DEVICE::kMouse &&
-			buttonEvent->GetIDCode() == 1 &&
-			buttonEvent->Value() == 0)
+		if (buttonEvent)
 		{
-			RE::MenuCursor* menuCursor = RE::MenuCursor::GetSingleton();
+			if (buttonEvent->userEvent == userEvents->mapLookMode)
+			{
+				buttonEvent->userEvent = userEvents->localMapMoveMode;
+			}
+			else if (buttonEvent->userEvent == userEvents->localMapMoveMode)
+			{
+				buttonEvent->userEvent = userEvents->click;
+			}
+		}
+	}
 
-			LMU::PlayerMapMarkerManager::GetSingleton()->PlaceMarker(a_localMapInputHandler->localMapMenu,
-																	 menuCursor->cursorPosX, menuCursor->cursorPosY);	
+	bool retval = hooks::LocalMapMenu::InputHandler::ProcessButton(a_localMapInputHandler, a_event);
+
+	if (localMapMenu.showingMap && localMapMenu.controlsReady)
+	{
+		if (buttonEvent)
+		{
+			RE::INPUT_DEVICE device = buttonEvent->GetDevice();
+
+			if (buttonEvent->userEvent == userEvents->click ||
+				buttonEvent->userEvent == userEvents->placePlayerMarker)
+			{
+				auto playerMapMarkerManager = LMU::PlayerMapMarkerManager::GetSingleton();
+
+				if (playerMapMarkerManager->CanPlaceMarker())
+				{ 
+					RE::MenuCursor* menuCursor = RE::MenuCursor::GetSingleton();
+
+					playerMapMarkerManager->PlaceMarker(a_localMapInputHandler->localMapMenu,
+														menuCursor->cursorPosX, menuCursor->cursorPosY);
+				}
+				else if(buttonEvent->Value() == 0)
+				{
+					playerMapMarkerManager->AllowPlaceMarker();
+				}
+			}
 		}
 	}
 

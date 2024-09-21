@@ -47,10 +47,14 @@ namespace LMU
 			return &singleton;
 		}
 
+		bool CanPlaceMarker() const { return allowPlaceMarker; }
+		void AllowPlaceMarker() { allowPlaceMarker = true; }
+
 		void PlaceMarker(RE::LocalMapMenu* a_localMapMenu, float a_cursorPosX, float a_cursorPosY);
 
 	private:
 		MessageBox messageBox;
+		bool allowPlaceMarker = true;
 	};
 }
 

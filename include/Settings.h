@@ -14,6 +14,12 @@ namespace settings
 
 	namespace debug
 	{
-		inline logger::level logLevel = logger::level::err;
+		inline logger::level logLevel = logger::level::debug;
+	}
+
+	namespace mapmenu
+	{
+		inline bool localMapColor = true;
+		inline bool localMapFogOfWar = true;
 	}
 }

@@ -62,7 +62,7 @@ namespace LMU
 			"main", "ps_5_0", compileFlags, 0,
 			reinterpret_cast<ID3DBlob**>(&pixelShaderBlob), &errorBlob)))
 		{
-			logger::critical("Pixel shader failed to compile");
+			logger::critical("Pixel shader failed to compile.");
 			if (errorBlob)
 			{
 				logger::critical("{}", static_cast<LPCSTR>(errorBlob->GetBufferPointer()));
@@ -70,7 +70,7 @@ namespace LMU
 		}
 		else
 		{
-			logger::debug("Pixel shader succesfully compiled");
+			logger::debug("Pixel shader succesfully compiled.");
 		}
 
 		REX::W32::ID3D11Device* device = RE::BSGraphics::Renderer::GetSingleton()->GetRuntimeData().forwarder;
@@ -80,11 +80,11 @@ namespace LMU
 		if (FAILED(device->CreatePixelShader(pixelShaderBlob->GetBufferPointer(), pixelShaderBlob->GetBufferSize(),
 			nullptr, &pixelShaderProgram)))
 		{
-			logger::critical("Failed to create pixel shader");
+			logger::critical("Failed to create pixel shader.");
 		}
 		else
 		{
-			logger::debug("Pixel shader succesfully created");
+			logger::debug("Pixel shader succesfully created.");
 		}
 
 		return pixelShaderProgram;

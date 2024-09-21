@@ -18,6 +18,15 @@ namespace settings
 			);
 		}
 
+		{
+			using namespace mapmenu;
+			iniSettingCollection->AddSettings
+			(
+				MakeSetting("bLocalMapColor:MapMenu", localMapColor),
+				MakeSetting("bLocalMapFogOfWar:MapMenu", localMapFogOfWar)
+			);
+		}
+
 		if (!iniSettingCollection->ReadFromFile(a_iniFileName))
 		{
 			logger::warn("Could not read {}, falling back to default options", a_iniFileName);
@@ -26,6 +35,12 @@ namespace settings
 		{
 			using namespace debug;
 			logLevel = static_cast<logger::level>(iniSettingCollection->GetSetting<std::uint32_t>("uLogLevel:Debug"));
+		}
+
+		{
+			using namespace mapmenu;
+			localMapColor = iniSettingCollection->GetSetting<bool>("bLocalMapColor:MapMenu");
+			localMapFogOfWar = iniSettingCollection->GetSetting<bool>("bLocalMapFogOfWar:MapMenu");
 		}
 	}
 }
