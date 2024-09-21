@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
 	LocalMapUpgrade
-	VERSION 0.1.0
+	VERSION 1.0.0
 	LANGUAGES CXX
 )
 
@@ -39,6 +39,7 @@ function(make_includable input_file output_file)
 endfunction(make_includable)
 
 make_includable(shaders/ISLocalMap.hlsl include/ISLocalMap.hlsl.h)
+
 
 ########################################################################################################################
 ## Configure target DLL

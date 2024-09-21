@@ -1,8 +1,8 @@
 {
-    "name": "commonlibsse-ng-plugin-template",
+    "name": "local-map-upgrade",
     "version-string": "1.0.0",
     "description": "",
-    "homepage": "https://github.com/alexsylex/CommonLibSSE-NG-Plugin-Template",
+    "homepage": "https://github.com/alexsylex/LocalMapUpgrade",
     "license": "MIT",
     "dependencies": [
         "commonlibsse-ng"
