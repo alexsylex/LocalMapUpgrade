@@ -5,7 +5,25 @@
 #include "PlayerMapMarkerManager.h"
 #include "ShaderManager.h"
 
-#include "RE/G/GFxValue.h"
+#include "RE/S/ShaderAccumulator.h"
+
+RE::TESWorldSpace* EnableWaterRenderingAndGetWorldSpace(RE::TES* a_tes)
+{
+	LMU::ShaderManager::GetSingleton()->EnableWaterRendering();
+
+	return RE::TES::GetSingleton()->GetRuntimeData2().worldSpace;
+}
+
+void SetupWaterShaderTechnique(RE::BSWaterShader* a_shader, std::uint32_t a_technique)
+{
+	if (RE::BSGraphics::BSShaderAccumulator::GetCurrentAccumulator()->GetRuntimeData().renderMode == 18)
+	{
+		// Fixes water flickering
+		a_technique &= ~0x802;
+	}
+
+	hooks::BSWaterShader::SetupTechnique(a_shader, a_technique);
+}
 
 bool CanProcess(RE::LocalMapMenu::InputHandler* a_localMapInputHandler, RE::InputEvent* a_event)
 {

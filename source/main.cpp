@@ -15,7 +15,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 
 	const SKSE::PluginDeclaration* plugin = SKSE::PluginDeclaration::GetSingleton();
 
-	if (!logger::init(plugin->GetName())) 
+	if (!logger::init(plugin->GetName()))
 	{
 		return false;
 	}

@@ -33,7 +33,7 @@ namespace RE
 									 const BSTArray<BSString>& a_options)
 	{
 		using func_t = decltype(&UI__OpenMessageBox);
-		static REL::Relocation<func_t> func{ RELOCATION_ID(51421, 442726) };
+		static REL::Relocation<func_t> func{ RELOCATION_ID(51421, REL::Module::get().version() == SKSE::RUNTIME_SSE_1_6_640 ? 52270 : 442726) };
 		return func(a_title, a_callback, a_arg3, a_arg4, a_arg5, a_options);
 	}
 

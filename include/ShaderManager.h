@@ -20,6 +20,9 @@ namespace LMU
 
 		void ToggleFogOfWarLocalMapShader();
 
+		void EnableWaterRendering() { enableWaterRendering = true; }
+		void DisableWaterRendering() { enableWaterRendering = false; }
+
 	private:
 		ShaderManager();
 
@@ -27,6 +30,8 @@ namespace LMU
 														const std::vector<const char*>& a_defineNames);
 
 		static inline ShaderManager* singleton = nullptr;
+
+		bool& enableWaterRendering = *REL::Relocation<bool*>{ RELOCATION_ID(513342, 391120) }.get();
 
 		RE::BSGraphics::PixelShader* localMapPixelShader = nullptr;
 
