@@ -7,7 +7,7 @@
 
 namespace LMU
 {
-	class PlayerMapMarkerManager
+	class PlayerSetMarkerManager
 	{
 		struct MessageBox
 		{
@@ -15,16 +15,16 @@ namespace LMU
 			{
 				void Run(Message a_optionIndex) final;
 
-				void SetData(RE::LocalMapMenu* a_localMapMenu, float a_cursorPosX, float a_cursorPosY)
+				void SetData(RE::LocalMapMenu* a_localMapMenu, float a_wndPointX, float a_wndPointY)
 				{
 					localMapMenu = a_localMapMenu;
-					cursorPosX = a_cursorPosX;
-					cursorPosY = a_cursorPosY;
+					wndPointX = a_wndPointX;
+					wndPointY = a_wndPointY;
 				}
 
 				RE::LocalMapMenu* localMapMenu = nullptr;
-				float cursorPosX = 0.0F;
-				float cursorPosY = 0.0F;
+				float wndPointX = 0.0F;
+				float wndPointY = 0.0F;
 			};
 
 			MessageBox()
@@ -40,17 +40,16 @@ namespace LMU
 		};
 
 	public:
-		static PlayerMapMarkerManager* GetSingleton()
+		static PlayerSetMarkerManager* GetSingleton()
 		{
-			static PlayerMapMarkerManager singleton;
-
+			static PlayerSetMarkerManager singleton;
 			return &singleton;
 		}
 
 		bool CanPlaceMarker() const { return allowPlaceMarker; }
 		void AllowPlaceMarker() { allowPlaceMarker = true; }
 
-		void PlaceMarker(RE::LocalMapMenu* a_localMapMenu, float a_cursorPosX, float a_cursorPosY);
+		void PlaceMarker(RE::LocalMapMenu* a_localMapMenu, float a_wndPointX, float a_wndPointY);
 
 	private:
 		MessageBox messageBox;

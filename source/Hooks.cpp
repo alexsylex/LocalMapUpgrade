@@ -1,17 +1,46 @@
-#include "Hooks.h"
+ #include "Hooks.h"
 
 #include "Settings.h"
 
-#include "PlayerMapMarkerManager.h"
+#include "ExtraMarkersManager.h"
+#include "PlayerSetMarkerManager.h"
 #include "ShaderManager.h"
 
+#include "RE/G/GFxValue.h"
 #include "RE/S/ShaderAccumulator.h"
 
-RE::TESWorldSpace* EnableWaterRenderingAndGetWorldSpace(RE::TES* a_tes)
+bool FakeNotSmallWorld(RE::TESWorldSpace* a_worldSpace)
 {
-	LMU::ShaderManager::GetSingleton()->EnableWaterRendering();
+	hooks::TESWorldSpace::IsSmallWorld(a_worldSpace);
 
-	return RE::TES::GetSingleton()->GetRuntimeData2().worldSpace;
+	return false;
+}
+
+void AddExtraAndQuestMarkersToMap(RE::BSTArray<RE::MapMenuMarker>& a_mapMarkers, RE::BSTArray<RE::BGSInstancedQuestObjective>& a_objectives,
+								  std::uint32_t a_arg3)
+{
+	LMU::ExtraMarkersManager::GetSingleton()->AddExtraMarkers(a_mapMarkers);
+
+	hooks::AddQuestMarkersToMap(a_mapMarkers, a_objectives, a_arg3);
+}
+
+bool InvokeCreateAndPostProcessMarkers(RE::GFxValue::ObjectInterface* a_objIface, void* a_data, RE::GFxValue* a_result, const char* a_name, const RE::GFxValue* a_args,
+									   std::uint32_t a_numArgs, bool a_isDObj)
+{
+	if (hooks::GFxValue::ObjectInterface::Invoke(a_objIface, a_data, a_result, a_name, a_args, a_numArgs, a_isDObj))
+	{
+		// Build manually our GFxValue for `iconDisplay`
+		RE::GFxValue iconDisplay;
+		iconDisplay._objectInterface = a_objIface;
+		iconDisplay._type = a_isDObj ? RE::GFxValue::ValueType::kDisplayObject : RE::GFxValue::ValueType::kObject;
+		iconDisplay._value.obj = a_data;
+
+		LMU::ExtraMarkersManager::GetSingleton()->PostCreateMarkers(iconDisplay);
+
+		return true;
+	}
+
+	return false;
 }
 
 void SetupWaterShaderTechnique(RE::BSWaterShader* a_shader, std::uint32_t a_technique)
@@ -27,41 +56,39 @@ void SetupWaterShaderTechnique(RE::BSWaterShader* a_shader, std::uint32_t a_tech
 
 bool CanProcess(RE::LocalMapMenu::InputHandler* a_localMapInputHandler, RE::InputEvent* a_event)
 {
-	RE::LocalMapMenu::RUNTIME_DATA& localMapMenu = a_localMapInputHandler->localMapMenu->GetRuntimeData();
-
-	if (localMapMenu.showingMap && localMapMenu.controlsReady)
-	{
-		// Show the place marker buttons
-
-		auto movie = *reinterpret_cast<RE::GFxMovie**&>(localMapMenu.localMapMovie);
-
-		RE::GFxValue bottomBarSetDestinationButton;
-		RE::GFxValue bottomBar;
-		if (localMapMenu.localMapMovie.GetMember("BottomBar", &bottomBar))
-		{
-			bottomBar.GetMember("RightButton", &bottomBarSetDestinationButton);
-			bottomBarSetDestinationButton.SetMember("visible", true);
-		}
-		else if (localMapMenu.localMapMovie.GetMember("_bottomBar", &bottomBar))
-		{
-			RE::GFxValue buttonPanel;
-			bottomBar.GetMember("buttonPanel", &buttonPanel);
-			buttonPanel.GetMember("button5", &bottomBarSetDestinationButton);
-			bottomBarSetDestinationButton.SetMember("_visible", true);
-		}
-	}
-
 	bool canProcess = hooks::LocalMapMenu::InputHandler::CanProcess(a_localMapInputHandler, a_event);
 
-	if (!canProcess)
+	if (!REL::Module::IsVR())
 	{
-		RE::INPUT_DEVICE device = a_event->GetDevice();
+		RE::LocalMapMenu::RUNTIME_DATA& localMapMenu = a_localMapInputHandler->localMapMenu->GetRuntimeData();
 
-		if (localMapMenu.showingMap && localMapMenu.controlsReady &&
-			(device == RE::INPUT_DEVICE::kMouse || device == RE::INPUT_DEVICE::kGamepad) &&
-			a_event->GetEventType() == RE::INPUT_EVENT_TYPE::kButton)
+		if (localMapMenu.showingMap && localMapMenu.controlsReady)
 		{
-			canProcess = true;
+			// Show the place marker buttons
+			RE::GFxValue bottomBarSetDestinationButton;
+			RE::GFxValue bottomBar;
+			if (localMapMenu.root.GetMember("BottomBar", &bottomBar))
+			{
+				bottomBar.GetMember("RightButton", &bottomBarSetDestinationButton);
+				bottomBarSetDestinationButton.SetMember("visible", true);
+			}
+			else if (localMapMenu.root.GetMember("_bottomBar", &bottomBar))
+			{
+				RE::GFxValue buttonPanel;
+				bottomBar.GetMember("buttonPanel", &buttonPanel);
+				buttonPanel.GetMember("button5", &bottomBarSetDestinationButton);
+				bottomBarSetDestinationButton.SetMember("_visible", true);
+			}
+
+			if (!canProcess)
+			{
+				RE::INPUT_DEVICE device = a_event->GetDevice();
+
+				if (a_event->GetEventType() == RE::INPUT_EVENT_TYPE::kButton)
+				{
+					canProcess = true;
+				}
+			}
 		}
 	}
 
@@ -73,47 +100,126 @@ bool ProcessButton(RE::LocalMapMenu::InputHandler* a_localMapInputHandler, RE::B
 	RE::LocalMapMenu::RUNTIME_DATA& localMapMenu = a_localMapInputHandler->localMapMenu->GetRuntimeData();
 
 	RE::ButtonEvent* buttonEvent = a_event->AsButtonEvent();
+	RE::INPUT_DEVICE device = buttonEvent->GetDevice();
+
+	bool isLocationFinderShown = false;
+
+	RE::GFxValue locationFinder;
+	localMapMenu.root.GetMember("_locationFinder", &locationFinder);
+	if (locationFinder.IsObject())
+	{
+		RE::GFxValue locationFinderShown;
+		locationFinder.GetMember("_bShown", &locationFinderShown);
+		isLocationFinderShown = locationFinderShown.GetBool();
+	}
 
 	auto userEvents = RE::UserEvents::GetSingleton();
 
-	if (localMapMenu.showingMap && localMapMenu.controlsReady)
+	bool skipVanillaProcessButton = false;
+
+	if (localMapMenu.showingMap && localMapMenu.controlsReady && !isLocationFinderShown)
 	{
 		if (buttonEvent)
 		{
-			if (buttonEvent->userEvent == userEvents->mapLookMode)
+#ifdef ENABLE_SKYRIM_VR
+			if (REL::Module::IsVR())
 			{
-				buttonEvent->userEvent = userEvents->localMapMoveMode;
+				if (device == RE::INPUT_DEVICE::kViveSecondary ||
+					device == RE::INPUT_DEVICE::kOculusSecondary ||
+					device == RE::INPUT_DEVICE::kWMRSecondary)
+				{
+					if (buttonEvent->userEvent == userEvents->click)
+					{
+						skipVanillaProcessButton = true;
+					}
+				}
 			}
-			else if (buttonEvent->userEvent == userEvents->localMapMoveMode)
+			else
+#endif
+			if (device == RE::INPUT_DEVICE::kMouse)
 			{
-				buttonEvent->userEvent = userEvents->click;
+				if (buttonEvent->userEvent == userEvents->mapLookMode)
+				{
+					buttonEvent->userEvent = userEvents->localMapMoveMode;
+				}
+				else if (buttonEvent->userEvent == userEvents->localMapMoveMode)
+				{
+					buttonEvent->userEvent = userEvents->click;
+				}
 			}
 		}
 	}
 
-	bool retval = hooks::LocalMapMenu::InputHandler::ProcessButton(a_localMapInputHandler, a_event);
+	bool retval = skipVanillaProcessButton ? false : hooks::LocalMapMenu::InputHandler::ProcessButton(a_localMapInputHandler, a_event);
 
-	if (localMapMenu.showingMap && localMapMenu.controlsReady)
+	if (localMapMenu.showingMap && localMapMenu.controlsReady && !isLocationFinderShown)
 	{
 		if (buttonEvent)
 		{
-			RE::INPUT_DEVICE device = buttonEvent->GetDevice();
-
-			if (buttonEvent->userEvent == userEvents->click ||
-				buttonEvent->userEvent == userEvents->placePlayerMarker)
+			if ((buttonEvent->userEvent == userEvents->click
+#ifdef ENABLE_SKYRIM_VR
+				&& (REL::Module::IsVR() &&
+					(device == RE::INPUT_DEVICE::kViveSecondary ||
+					 device == RE::INPUT_DEVICE::kOculusSecondary ||
+					 device == RE::INPUT_DEVICE::kWMRSecondary))
+#endif
+				) || buttonEvent->userEvent == userEvents->placePlayerMarker)
 			{
-				auto playerMapMarkerManager = LMU::PlayerMapMarkerManager::GetSingleton();
+				auto playerSetMarkerManager = LMU::PlayerSetMarkerManager::GetSingleton();
 
-				if (playerMapMarkerManager->CanPlaceMarker())
+				if (playerSetMarkerManager->CanPlaceMarker())
 				{ 
-					RE::MenuCursor* menuCursor = RE::MenuCursor::GetSingleton();
+					float wndPointX{};
+					float wndPointY{};
 
-					playerMapMarkerManager->PlaceMarker(a_localMapInputHandler->localMapMenu,
-														menuCursor->cursorPosX, menuCursor->cursorPosY);
+					if (REL::Module::IsVR() && device == RE::INPUT_DEVICE::kGamepad)
+					{
+						RE::LocalMapMenu* localMapMenu = a_localMapInputHandler->localMapMenu;
+
+						float localMapViewWidth = localMapMenu->bottomRight.x - localMapMenu->topLeft.x;
+						float localMapViewHeight = localMapMenu->bottomRight.y - localMapMenu->topLeft.y;
+
+						// In VR, for gamepad users, use the center of the Local Map menu as reference
+						wndPointX = localMapMenu->topLeft.x + localMapViewWidth / 2;
+						wndPointY = localMapMenu->topLeft.y + localMapViewHeight / 2;
+					}
+					else
+					{
+						RE::MenuCursor::RUNTIME_DATA& menuCursor = RE::MenuCursor::GetSingleton()->GetRuntimeData();
+
+						wndPointX = menuCursor.cursorPosX;
+						wndPointY = menuCursor.cursorPosY;
+					}
+
+					playerSetMarkerManager->PlaceMarker(a_localMapInputHandler->localMapMenu,
+														wndPointX, wndPointY);
 				}
-				else if(buttonEvent->Value() == 0)
+				else if (buttonEvent->Value() == 0)
 				{
-					playerMapMarkerManager->AllowPlaceMarker();
+					playerSetMarkerManager->AllowPlaceMarker();
+				}
+
+				return true;
+			}
+			else
+			{
+				RE::LocalMapCamera* localMapCamera = a_localMapInputHandler->localMapMenu->localCullingProcess.GetLocalMapCamera();
+
+				if (buttonEvent->userEvent == userEvents->up)
+				{
+					localMapCamera->translationInput.y += settings::mapmenu::localMapKeyboardPanSpeed;
+				}
+				else if (buttonEvent->userEvent == userEvents->down)
+				{
+					localMapCamera->translationInput.y -= settings::mapmenu::localMapKeyboardPanSpeed;
+				}
+				else if (buttonEvent->userEvent == userEvents->left)
+				{
+					localMapCamera->translationInput.x -= settings::mapmenu::localMapKeyboardPanSpeed;
+				}
+				else if (buttonEvent->userEvent == userEvents->right)
+				{
+					localMapCamera->translationInput.x += settings::mapmenu::localMapKeyboardPanSpeed;
 				}
 			}
 		}

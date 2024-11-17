@@ -68,7 +68,13 @@ PS_OUTPUT main(PS_INPUT input)
     alpha *= 1 - colorCC.w;
 #endif
     
+    float2 coord = 2 * abs(input.TexCoord - 0.5);
+    
+#ifndef ROUND
     float2 edgeFadeFactor = 1 - pow(2 * abs(input.TexCoord - 0.5), 5);
+#else
+    float2 edgeFadeFactor = clamp(1 - pow(coord.x * coord.x + coord.y * coord.y, 7), 0, 1);
+#endif
 	
 #ifdef COLOR
     output.Color.xyz = colorCC.xyz;

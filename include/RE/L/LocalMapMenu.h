@@ -114,9 +114,9 @@ namespace RE
 		struct RUNTIME_DATA
 		{
 			BSScaleformExternalTexture    unk303A0;        // 00
-			GFxValue                      localMapMovie;   // 18
-			GFxValue                      mapMovie;        // 30
-			void* unk303E8;        // 48
+			GFxValue                      root;			   // 18
+			GFxValue                      iconDisplay;	   // 30
+			GFxMovieView*                 movieView;	   // 48
 			BSTSmartPointer<InputHandler> unk303F0;        // 50
 			std::int32_t                  selectedMarker;  // 58
 			bool                          showingMap;      // 5C

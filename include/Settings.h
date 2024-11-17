@@ -21,5 +21,10 @@ namespace settings
 	{
 		inline bool localMapColor = true;
 		inline bool localMapFogOfWar = true;
+		inline float localMapKeyboardPanSpeed = 60.0F;
+		inline bool localMapShowEnemyActors = true;
+		inline bool localMapShowGuardActors = true;
+		inline bool localMapShowHostileActors = true;
+		inline bool localMapShowDeadActors = true;
 	}
 }

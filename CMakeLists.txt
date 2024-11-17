@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
 	LocalMapUpgrade
-	VERSION 1.1.0
+	VERSION 2.1.0
 	LANGUAGES CXX
 )
 
@@ -85,6 +85,8 @@ target_sources(
 	${PROJECT_NAME}
 	INTERFACE
 	"$<BUILD_INTERFACE:CommonLibSSE.natvis>"
+	PRIVATE
+	${CMAKE_CURRENT_BINARY_DIR}/version.rc
 )
 
 ########################################################################################################################
@@ -96,7 +98,7 @@ list(REMOVE_ITEM PRE_LINK_CLEAN_DIRS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIP
 
 foreach(PRE_LINK_CLEAN_DIR ${PRE_LINK_CLEAN_DIRS})
 	add_custom_command(TARGET ${PROJECT_NAME} PRE_LINK
-		COMMAND ${CMAKE_COMMAND} -E rm -rf "${PRE_LINK_CLEAN_DIR}" 
+		COMMAND ${CMAKE_COMMAND} -E rm -rf "${PRE_LINK_CLEAN_DIR}"
 	)
 endforeach()
 

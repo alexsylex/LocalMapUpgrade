@@ -22,8 +22,13 @@ namespace settings
 			using namespace mapmenu;
 			iniSettingCollection->AddSettings
 			(
-				MakeSetting("bLocalMapColor:MapMenu", localMapColor),
-				MakeSetting("bLocalMapFogOfWar:MapMenu", localMapFogOfWar)
+				MakeSetting("bMapLocalColor:MapMenu", localMapColor),
+				MakeSetting("bMapLocalFogOfWar:MapMenu", localMapFogOfWar),
+				MakeSetting("fMapLocalKeyboardPanSpeed:MapMenu", localMapKeyboardPanSpeed),
+				MakeSetting("bMapLocalShowEnemyActors:MapMenu", localMapShowEnemyActors),
+				MakeSetting("bMapLocalShowHostileActors:MapMenu", localMapShowHostileActors),
+				MakeSetting("bMapLocalShowGuardActors:MapMenu", localMapShowGuardActors),
+				MakeSetting("bMapLocalShowDeadActors:MapMenu", localMapShowDeadActors)
 			);
 		}
 
@@ -39,8 +44,13 @@ namespace settings
 
 		{
 			using namespace mapmenu;
-			localMapColor = iniSettingCollection->GetSetting<bool>("bLocalMapColor:MapMenu");
-			localMapFogOfWar = iniSettingCollection->GetSetting<bool>("bLocalMapFogOfWar:MapMenu");
+			localMapColor = iniSettingCollection->GetSetting<bool>("bMapLocalColor:MapMenu");
+			localMapFogOfWar = iniSettingCollection->GetSetting<bool>("bMapLocalFogOfWar:MapMenu");
+			localMapKeyboardPanSpeed = iniSettingCollection->GetSetting<float>("fMapLocalKeyboardPanSpeed:MapMenu");
+			localMapShowEnemyActors = iniSettingCollection->GetSetting<bool>("bMapLocalShowEnemyActors:MapMenu");
+			localMapShowHostileActors = iniSettingCollection->GetSetting<bool>("bMapLocalShowHostileActors:MapMenu");
+			localMapShowGuardActors = iniSettingCollection->GetSetting<bool>("bMapLocalShowGuardActors:MapMenu");
+			localMapShowDeadActors = iniSettingCollection->GetSetting<bool>("bMapLocalShowDeadActors:MapMenu");
 		}
 	}
 }

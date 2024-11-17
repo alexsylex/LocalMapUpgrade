@@ -4,6 +4,18 @@
 
 #include <d3dcompiler.h>
 
+namespace RE::VR
+{
+	class ImageSpaceManager
+	{
+	public:
+		enum ImageSpaceEffectEnum
+		{
+			ISLocalMap = 101, // BSImagespaceShaderLocalMap
+		};
+	};
+}
+
 namespace LMU
 {
 	static constexpr const char* pixelShaderSrc =
@@ -13,7 +25,9 @@ namespace LMU
 
 	ShaderManager::ShaderManager()
 	{
-		RE::ImageSpaceEffect* localMapShaderEffect = RE::ImageSpaceManager::GetSingleton()->effects[RE::ImageSpaceManager::ISLocalMap];
+		std::uint32_t isLocalMapIndex = REL::Module::IsVR() ? RE::VR::ImageSpaceManager::ISLocalMap : RE::ImageSpaceManager::ISLocalMap;
+
+		RE::ImageSpaceEffect* localMapShaderEffect = RE::ImageSpaceManager::GetSingleton()->effects[isLocalMapIndex];
 
 		auto localMapShader = skyrim_cast<RE::BSImagespaceShader*>(localMapShaderEffect);
 
@@ -21,19 +35,25 @@ namespace LMU
 		{
 			localMapPixelShader = *localMapShader->pixelShaders.begin();
 
-			originalProgram = localMapPixelShader->shader;
-			noFogOfWarProgram = CompilePixelShader(pixelShaderSrc, { "NO_FOG_OF_WAR" });
-			colorProgram = CompilePixelShader(pixelShaderSrc, { "COLOR" });
-			colorNoFogOfWarProgram = CompilePixelShader(pixelShaderSrc, { "COLOR", "NO_FOG_OF_WAR" });
+			// Squared Black & White
+			squaredShaders.blackNWhite.fogOfWar = CompilePixelShader(pixelShaderSrc);
+			squaredShaders.blackNWhite.noFogOfWar = CompilePixelShader(pixelShaderSrc, { "NO_FOG_OF_WAR" });
 
-			if (colorEnabled)
-			{
-				localMapPixelShader->shader = fogOfWarEnabled ? colorProgram : colorNoFogOfWarProgram;
-			}
-			else if (!fogOfWarEnabled)
-			{
-				localMapPixelShader->shader = noFogOfWarProgram;
-			}
+			// Squared Color
+			squaredShaders.color.fogOfWar = CompilePixelShader(pixelShaderSrc, { "COLOR" });
+			squaredShaders.color.noFogOfWar = CompilePixelShader(pixelShaderSrc, { "COLOR", "NO_FOG_OF_WAR" });
+
+			// Round Black & White
+			roundShaders.blackNWhite.fogOfWar = CompilePixelShader(pixelShaderSrc, { "ROUND" });
+			roundShaders.blackNWhite.noFogOfWar = CompilePixelShader(pixelShaderSrc, { "ROUND", "NO_FOG_OF_WAR" });
+
+			// Round Color
+			roundShaders.color.fogOfWar = CompilePixelShader(pixelShaderSrc, { "ROUND", "COLOR" });
+			roundShaders.color.noFogOfWar = CompilePixelShader(pixelShaderSrc, { "ROUND", "COLOR", "NO_FOG_OF_WAR" });
+
+			isFogOfWarEnabled = settings::mapmenu::localMapFogOfWar;
+
+			SetPixelShaderProperties(shape, style);
 		}
 		else
 		{
@@ -92,20 +112,26 @@ namespace LMU
 
 	void ShaderManager::ToggleFogOfWarLocalMapShader()
 	{
-		if (fogOfWarEnabled)
-		{
-			localMapPixelShader->shader = colorEnabled ? colorNoFogOfWarProgram : noFogOfWarProgram;
-			fogOfWarEnabled = false;
-		}
-		else
-		{
-			localMapPixelShader->shader = colorEnabled ? colorProgram : originalProgram;
-			fogOfWarEnabled = true;
-		}
+		isFogOfWarEnabled = !isFogOfWarEnabled;
+
+		SetPixelShaderProperties(shape, style);
 
 		if (RE::ConsoleLog::IsConsoleMode())
 		{
-			RE::ConsoleLog::GetSingleton()->Print("Fog of war - %s.", fogOfWarEnabled ? "ENABLED" : "DISABLED");
+			RE::ConsoleLog::GetSingleton()->Print("Fog of war - %s.", isFogOfWarEnabled ? "ENABLED" : "DISABLED");
 		}
+	}
+
+	void ShaderManager::SetPixelShaderProperties(PixelShaderProperty::Shape a_shape, PixelShaderProperty::Style a_style)
+	{
+		PixelShaderGroup& styleShaders = a_shape == PixelShaderProperty::Shape::kRound ? roundShaders : squaredShaders;
+		PixelShaderGroup::FogOfWarGroup& shaders = a_style == PixelShaderProperty::Style::kColor ? styleShaders.color : styleShaders.blackNWhite;
+		localMapPixelShader->shader = isFogOfWarEnabled ? shaders.fogOfWar : shaders.noFogOfWar;
+	}
+
+	void ShaderManager::GetPixelShaderProperties(PixelShaderProperty::Shape& a_shape, PixelShaderProperty::Style& a_style)
+	{
+		a_shape = singleton->shape;
+		a_style = singleton->style;
 	}
 }

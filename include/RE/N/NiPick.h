@@ -80,7 +80,7 @@ namespace RE
 		NiPick* Ctor(std::uint16_t a_resultsArraySize = 0, std::uint16_t a_resultsArrayGrowBy = 8)
 		{
 			using func_t = decltype(&NiPick::Ctor);
-			REL::Relocation<func_t> func{ RELOCATION_ID(70361, 71857) };
+			REL::Relocation<func_t> func{ REL::VariantID(70361, 71857, 0xCD8370) };
 
 			return func(this, a_resultsArraySize, a_resultsArrayGrowBy);
 		}
@@ -88,7 +88,7 @@ namespace RE
 		void Dtor()
 		{
 			using func_t = decltype(&NiPick::Dtor);
-			REL::Relocation<func_t> func{ RELOCATION_ID(70362, 71858) };
+			REL::Relocation<func_t> func{ REL::VariantID(70362, 71858, 0xCD8430) };
 
 			return func(this);
 		}
@@ -96,7 +96,7 @@ namespace RE
 		bool PickObjects(const NiPoint3& a_origin, const NiPoint3& a_dir, bool a_append = false)
 		{
 			using func_t = decltype(&NiPick::PickObjects);
-			REL::Relocation<func_t> func{ RELOCATION_ID(70363, 71859) };
+			REL::Relocation<func_t> func{ REL::VariantID(70363, 71859, 0xCD8480) };
 
 			return func(this, a_origin, a_dir, a_append);
 		}
