@@ -76,6 +76,11 @@ namespace RE
 
 		return false;
 	}
+
+	bool Actor__IsUndead(Actor* a_actor)
+	{
+		return a_actor->GetRace()->HasAnyKeywordByEditorID({ "ActorTypeDaedra", "ActorTypeDwarven", "NoDetectLife", "ActorTypeUndead" });
+	}
 }
 
 namespace LMU
@@ -88,7 +93,7 @@ namespace LMU
 			.data = nullptr,
 			.ref = a_actorHandle.native_handle(),
 			.description = a_actor->GetDisplayFullName(),
-			.type = RE::MapMenuMarker::Type::kLocation,
+			.type = RE::MapMenuMarker::Type::kLocation, // Playing mind tricks with the game
 			.door = 0,
 			.index = -1,
 			.quest = nullptr,
@@ -108,6 +113,8 @@ namespace LMU
 		{
 			if (RE::NiPointer<RE::Actor> actor = actorHandle.get())
 			{
+				float distance = actor->GetDistance(player);
+
 				bool isActorEnemy = false;
 
 				for (RE::ActorHandle& enemyActorHandle : enemyHandles)
@@ -115,34 +122,43 @@ namespace LMU
 					if (actorHandle == enemyActorHandle)
 					{
 						isActorEnemy = true;
-						AddExtraMarker(actorHandle, actor, a_mapMarkers);
+
+						if (distance <= aliveActorsDisplayRadius ||
+							(Actor__IsUndead(actor.get()) && distance <= deadActorsDisplayRadius))
+						{
+							AddExtraMarker(actorHandle, actor, a_mapMarkers);
+						}
+
 						break;
 					}
 				}
 
-				if (Actor__IsDead(actor.get()))
+				if (!isActorEnemy)
 				{
-					if (RE::TESObjectREFR_HasAnyDroppedItem(actor.get()))
+					if (Actor__IsDead(actor.get()))
 					{
-						AddExtraMarker(actorHandle, actor, a_mapMarkers);
+						if (distance <= deadActorsDisplayRadius)
+						{
+							if (RE::TESObjectREFR_HasAnyDroppedItem(actor.get()))
+							{
+								AddExtraMarker(actorHandle, actor, a_mapMarkers);
+							}
+						}
 					}
-				}
-				else if (!isActorEnemy && actor->AsActorValueOwner()->GetActorValue(RE::ActorValue::kAggression) != 0.0F)
-				{
-					if (actor->IsHostileToActor(player))
+					else
 					{
-						AddExtraMarker(actorHandle, actor, a_mapMarkers);
-					}
-					else if (actor->IsGuard())
-					{
-						AddExtraMarker(actorHandle, actor, a_mapMarkers);
+						if (distance <= aliveActorsDisplayRadius ||
+							(Actor__IsUndead(actor.get()) && distance <= deadActorsDisplayRadius))
+						{
+							AddExtraMarker(actorHandle, actor, a_mapMarkers);
+						}
 					}
 				}
 			}
 		}
 	}
 
-	void ExtraMarkersManager::PostCreateMarkers(RE::GFxValue& a_iconDisplay)
+	void ExtraMarkersManager::PostCreateMarkersImpl(RE::GFxValue& a_iconDisplay)
 	{
 		RE::GFxValue extraMarkersData;
 		a_iconDisplay.GetMember("ExtraMarkerData", &extraMarkersData);
@@ -162,6 +178,8 @@ namespace LMU
 		{
 			if (RE::NiPointer<RE::Actor> actor = actorHandle.get())
 			{
+				float distance = actor->GetDistance(player);
+
 				bool isActorEnemy = false;
 
 				for (RE::ActorHandle& enemyActorHandle : enemyHandles)
@@ -169,33 +187,58 @@ namespace LMU
 					if (actorHandle == enemyActorHandle)
 					{
 						isActorEnemy = true;
-						extraMarkersData.PushBack(ExtraMarker::Type::kEnemy);
+
+						if (distance <= aliveActorsDisplayRadius ||
+							(Actor__IsUndead(actor.get()) && distance <= deadActorsDisplayRadius))
+						{
+							extraMarkersData.PushBack(ExtraMarker::Type::kEnemy);
+						}
+
 						break;
 					}
 				}
-
-				if (Actor__IsDead(actor.get()))
+				
+				if (!isActorEnemy)
 				{
-					if (RE::TESObjectREFR_HasAnyDroppedItem(actor.get()))
+					if (Actor__IsDead(actor.get()))
 					{
-						extraMarkersData.PushBack(ExtraMarker::Type::kDead);
+						if (distance <= deadActorsDisplayRadius)
+						{
+							if (RE::TESObjectREFR_HasAnyDroppedItem(actor.get()))
+							{
+								extraMarkersData.PushBack(ExtraMarker::Type::kDead);
+							}
+						}
 					}
-				}
-				else if (!isActorEnemy && actor->AsActorValueOwner()->GetActorValue(RE::ActorValue::kAggression) != 0.0F)
-				{
-					if (actor->IsHostileToActor(player))
+					else
 					{
-						extraMarkersData.PushBack(ExtraMarker::Type::kHostile);
-					}
-					else if (actor->IsGuard())
-					{
-						extraMarkersData.PushBack(ExtraMarker::Type::kGuard);
+						if (distance <= aliveActorsDisplayRadius ||
+							(Actor__IsUndead(actor.get()) && distance <= deadActorsDisplayRadius))
+						{
+							if (actor->IsHostileToActor(player))
+							{
+								extraMarkersData.PushBack(ExtraMarker::Type::kHostile);
+							}
+							else if (actor->IsGuard())
+							{
+								extraMarkersData.PushBack(ExtraMarker::Type::kGuard);
+							}
+							else if (actor->IsPlayerTeammate())
+							{
+								extraMarkersData.PushBack(ExtraMarker::Type::kTeammate);
+							}
+							else
+							{
+								extraMarkersData.PushBack(ExtraMarker::Type::kNeutral);
+							}
+						}
 					}
 				}
 			}
 		}
 
-		a_iconDisplay.Invoke("PostCreateMarkers", std::array<RE::GFxValue, 4>{ settings::mapmenu::localMapShowEnemyActors, settings::mapmenu::localMapShowHostileActors,
-																			   settings::mapmenu::localMapShowGuardActors, settings::mapmenu::localMapShowDeadActors });
+		a_iconDisplay.Invoke("PostCreateMarkers", std::array<RE::GFxValue, 6>{ settings::mapmenu::localMapShowEnemyActors, settings::mapmenu::localMapShowHostileActors,
+																			   settings::mapmenu::localMapShowGuardActors, settings::mapmenu::localMapShowDeadActors,
+																			   settings::mapmenu::localMapShowTeammateActors, settings::mapmenu::localMapShowNeutralActors });
 	}
 }

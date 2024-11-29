@@ -10,6 +10,11 @@
 
 const SKSE::LoadInterface* skse;
 
+namespace LMU
+{
+	bool isIconDisplayExtensionPatched = false;
+}
+
 void InfinityUIMessageListener(SKSE::MessagingInterface::Message* a_msg);
 
 void SKSEMessageListener(SKSE::MessagingInterface::Message* a_msg)
@@ -44,6 +49,8 @@ void SKSEMessageListener(SKSE::MessagingInterface::Message* a_msg)
 		pixelShaderPropertiesHook.SetPixelShaderProperties = &LMU::ShaderManager::SetPixelShaderProperties;
 		pixelShaderPropertiesHook.GetPixelShaderProperties = &LMU::ShaderManager::GetPixelShaderProperties;
 		DispatchMessage(pixelShaderPropertiesHook);
+
+		LMU::ExtraMarkersManager::InitSingleton();
 
 		LMU::API::PostCreateMarkersHookMessage postCreateMarkersHook;
 		postCreateMarkersHook.PostCreateMarkers = &LMU::ExtraMarkersManager::PostCreateMarkers;
@@ -85,7 +92,7 @@ void InfinityUIMessageListener(SKSE::MessagingInterface::Message* a_msg)
 
 				if (msg->newInstance._value.obj == iconDisplayExtension._value.obj)
 				{
-					LMU::ExtraMarkersManager::InitSingleton();
+					LMU::isIconDisplayExtensionPatched = true;
 				}
 			}
 			break;
@@ -94,7 +101,7 @@ void InfinityUIMessageListener(SKSE::MessagingInterface::Message* a_msg)
 
 			logger::info("Finished loading HUD patches");
 
-			if (!LMU::ExtraMarkersManager::GetSingleton())
+			if (!LMU::isIconDisplayExtensionPatched)
 			{
 				SKSE::stl::report_and_fail
 				(

@@ -23,8 +23,11 @@ namespace settings
 		inline bool localMapFogOfWar = true;
 		inline float localMapKeyboardPanSpeed = 60.0F;
 		inline bool localMapShowEnemyActors = true;
-		inline bool localMapShowGuardActors = true;
 		inline bool localMapShowHostileActors = true;
+		inline bool localMapShowGuardActors = true;
 		inline bool localMapShowDeadActors = true;
+		inline bool localMapShowTeammateActors = true;
+		inline bool localMapShowNeutralActors = true;
+		inline bool localMapShowActorsOnlyWithDetectSpell = false;
 	}
 }

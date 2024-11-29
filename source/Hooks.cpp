@@ -7,6 +7,7 @@
 #include "ShaderManager.h"
 
 #include "RE/G/GFxValue.h"
+#include "RE/S/StopHitEffectsVisitor.h"
 #include "RE/S/ShaderAccumulator.h"
 
 bool FakeNotSmallWorld(RE::TESWorldSpace* a_worldSpace)
@@ -138,13 +139,20 @@ bool ProcessButton(RE::LocalMapMenu::InputHandler* a_localMapInputHandler, RE::B
 #endif
 			if (device == RE::INPUT_DEVICE::kMouse)
 			{
-				if (buttonEvent->userEvent == userEvents->mapLookMode)
+				RE::MenuCursor::RUNTIME_DATA& menuCursor = RE::MenuCursor::GetSingleton()->GetRuntimeData();
+				RE::LocalMapMenu* localMapMenu = a_localMapInputHandler->localMapMenu;
+
+				if (menuCursor.cursorPosX > localMapMenu->topLeft.x && menuCursor.cursorPosX < localMapMenu->bottomRight.x &&
+					menuCursor.cursorPosY > localMapMenu->topLeft.y && menuCursor.cursorPosY < localMapMenu->bottomRight.y)
 				{
-					buttonEvent->userEvent = userEvents->localMapMoveMode;
-				}
-				else if (buttonEvent->userEvent == userEvents->localMapMoveMode)
-				{
-					buttonEvent->userEvent = userEvents->click;
+					if (buttonEvent->userEvent == userEvents->mapLookMode)
+					{
+						buttonEvent->userEvent = userEvents->localMapMoveMode;
+					}
+					else if (buttonEvent->userEvent == userEvents->localMapMoveMode)
+					{
+						buttonEvent->userEvent = userEvents->click;
+					}
 				}
 			}
 		}
@@ -226,6 +234,75 @@ bool ProcessButton(RE::LocalMapMenu::InputHandler* a_localMapInputHandler, RE::B
 	}
 
 	return retval;
+}
+
+bool IsDetectDeadEffect(RE::DetectLifeEffect* a_detectEffect)
+{
+	RE::TESConditionItem* condition = a_detectEffect->effect->baseEffect->conditions.head;
+	while (condition)
+	{
+		if (condition->data.functionData.function == RE::FUNCTION_DATA::FunctionID::kGetDead)
+		{
+			return true;
+		}
+
+		condition = condition->next;
+	}
+
+	return false;
+}
+
+void DetectLifeEffectUpdate(RE::DetectLifeEffect* a_detectEffect, float a_delta)
+{
+	if (settings::mapmenu::localMapShowActorsOnlyWithDetectSpell)
+	{
+		auto extraMarkersManager = LMU::ExtraMarkersManager::GetSingleton();
+
+		if (IsDetectDeadEffect(a_detectEffect))
+		{
+			extraMarkersManager->SetDeadActorsDisplayRadius(a_detectEffect->effect->GetArea());
+		}
+		else
+		{
+			extraMarkersManager->SetAliveActorsDisplayRadius(a_detectEffect->effect->GetArea());
+		}
+	}
+
+	hooks::DetectLifeEffect::Update(a_detectEffect, a_delta);
+}
+
+RE::BSContainer::ForEachResult VisitStopHitEffects(RE::StopHitEffectsVisitor* a_stopHitEffectVisitor, RE::ReferenceEffect* a_effect)
+{
+	if (auto activeEffectController = skyrim_cast<RE::ActiveEffectReferenceEffectController*>(a_effect->controller))
+	{
+		if (auto detectEffect = skyrim_cast<RE::DetectLifeEffect*>(activeEffectController->effect))
+		{
+			if (settings::mapmenu::localMapShowActorsOnlyWithDetectSpell)
+			{
+				// Maybe here list hit effects that are going to be detached after?
+			}
+		}
+	}
+
+	return hooks::StopHitEffectsVisitor::Visit(a_stopHitEffectVisitor, a_effect);
+}
+
+void DetachShaderReferenceEffect(RE::ShaderReferenceEffect* a_effect)
+{
+	if (settings::mapmenu::localMapShowActorsOnlyWithDetectSpell)
+	{
+		// Detachment of the shader has a delay of a couple of seconds after the detect life
+		// effect is gone. When we enter here, a_effect->controller == nullptr, so we cannot
+		// check the source of the shader effect.
+		// Detach both blindly, if any is kept by `DetectLifeEffect::Update', it will be shown again
+
+		auto extraMarkersManager = LMU::ExtraMarkersManager::GetSingleton();
+
+		extraMarkersManager->SetDeadActorsDisplayRadius(0);
+		extraMarkersManager->SetAliveActorsDisplayRadius(0);
+	}
+
+	hooks::ShaderReferenceEffect::DetachImpl(a_effect);
 }
 
 bool ToggleFogOfWar(const RE::SCRIPT_PARAMETER* a_paramInfo, RE::SCRIPT_FUNCTION::ScriptData* a_scriptData,

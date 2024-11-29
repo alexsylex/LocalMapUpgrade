@@ -5,6 +5,7 @@
 namespace RE
 {
 	class BSWaterShader;
+	class StopHitEffectsVisitor;
 }
 
 bool FakeNotSmallWorld(RE::TESWorldSpace* a_worldSpace);
@@ -23,13 +24,18 @@ bool ProcessButton(RE::LocalMapMenu::InputHandler* a_localMapInputHandler, RE::B
 bool ToggleFogOfWar(const RE::SCRIPT_PARAMETER* a_paramInfo, RE::SCRIPT_FUNCTION::ScriptData* a_scriptData, RE::TESObjectREFR* a_thisObj, RE::TESObjectREFR* a_containingObj, RE::Script* a_scriptObj,
 					RE::ScriptLocals* a_locals, double& a_result, std::uint32_t& a_opcodeOffsetPtr);
 
+void DetectLifeEffectUpdate(RE::DetectLifeEffect* a_detectLifeEffect, float a_delta);
+
+RE::BSContainer::ForEachResult VisitStopHitEffects(RE::StopHitEffectsVisitor* a_stopHitEffectVisitor, RE::ReferenceEffect* a_effect);
+
+void DetachShaderReferenceEffect(RE::ShaderReferenceEffect* a_effect);
+
 namespace hooks
 {
 	class LocalMapMenu
 	{
 		static constexpr REL::VariantID AdvanceId{ 52078, 52966, 0x90ED80 };
 		static constexpr REL::VariantID PopulateDataId{ 52081, 52971, 0x90F3C0 };
-		//static constexpr REL::VariantID RefreshMarkersId{ 52090, 52980, 0x910A60 };
 		
 	public:
 		class InputHandler
@@ -78,6 +84,40 @@ namespace hooks
 	};
 
 	inline REL::Relocation<void (*)(RE::BSTArray<RE::MapMenuMarker>&, RE::BSTArray<RE::BGSInstancedQuestObjective>, std::uint32_t)> AddQuestMarkersToMap;
+
+	class DetectLifeEffect
+	{
+	public:
+		static inline REL::Relocation<std::uintptr_t> vTable{ RE::VTABLE_DetectLifeEffect[0] };
+
+		static inline REL::Relocation<void (RE::DetectLifeEffect::*)(float)> Update;
+		static inline REL::Relocation<void (RE::DetectLifeEffect::*)()> Finish;
+	};
+
+	class ActiveReferenceEffectController
+	{
+	public:
+		static inline REL::Relocation<std::uintptr_t> vTable{ RE::VTABLE_ActiveEffectReferenceEffectController[0] };
+
+		static inline REL::Relocation<void (RE::DetectLifeEffect::*)(float)> Update;
+		static inline REL::Relocation<void (RE::DetectLifeEffect::*)()> Finish;
+	};
+
+	class StopHitEffectsVisitor
+	{
+	public:
+		static inline REL::Relocation<std::uintptr_t> vTable{ RE::VTABLE___StopHitEffectsVisitor[0] };
+
+		static inline REL::Relocation<RE::BSContainer::ForEachResult (RE::StopHitEffectsVisitor::*)(RE::ReferenceEffect*)> Visit;
+	};
+
+	class ShaderReferenceEffect
+	{
+	public:
+		static inline REL::Relocation<std::uintptr_t> vTable{ RE::VTABLE_ShaderReferenceEffect[0] };
+
+		static inline REL::Relocation<void (RE::ShaderReferenceEffect::*)()> DetachImpl;
+	};
 
 	static inline void Install()
 	{
@@ -132,6 +172,12 @@ namespace hooks
 		LocalMapMenu::InputHandler::ProcessButton = LocalMapMenu::InputHandler::vTable.write_vfunc(REL::Module::IsVR() ? 8 : 5, ProcessButton);
 
 		BSWaterShader::SetupTechnique = BSWaterShader::vTable.write_vfunc(2, &SetupWaterShaderTechnique);
+
+		DetectLifeEffect::Update = DetectLifeEffect::vTable.write_vfunc(4, DetectLifeEffectUpdate);
+
+		StopHitEffectsVisitor::Visit = StopHitEffectsVisitor::vTable.write_vfunc(1, VisitStopHitEffects);
+
+		ShaderReferenceEffect::DetachImpl = ShaderReferenceEffect::vTable.write_vfunc(0x3E, DetachShaderReferenceEffect);
 
 		RE::SCRIPT_FUNCTION* tfow = RE::SCRIPT_FUNCTION::LocateConsoleCommand("ToggleFogOfWar");
 		tfow->executeFunction = &ToggleFogOfWar;
