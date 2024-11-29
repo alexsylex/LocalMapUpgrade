@@ -1,3 +1,4 @@
 .vs/
 build/
 include/ISLocalMap.hlsl.h
+/swf/Map
