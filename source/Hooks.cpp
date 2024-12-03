@@ -258,26 +258,85 @@ void DetectLifeEffectUpdate(RE::DetectLifeEffect* a_detectEffect, float a_delta)
 	{
 		auto extraMarkersManager = LMU::ExtraMarkersManager::GetSingleton();
 
+		std::uint32_t detectSpellRadius = a_detectEffect->effect->GetArea();
+
 		if (IsDetectDeadEffect(a_detectEffect))
 		{
-			extraMarkersManager->SetDeadActorsDisplayRadius(a_detectEffect->effect->GetArea());
+			std::uint32_t currentUndeadActorDisplayRadius = extraMarkersManager->GetUndeadActorsDisplayRadius();
+
+			if (detectSpellRadius > currentUndeadActorDisplayRadius)
+			{
+				extraMarkersManager->SetUndeadActorsDisplayRadius(detectSpellRadius);
+			}
+
+			std::uint32_t currentDeadActorDisplayRadius = extraMarkersManager->GetDeadActorsDisplayRadius();
+
+			if (detectSpellRadius > currentDeadActorDisplayRadius)
+			{
+				extraMarkersManager->SetDeadActorsDisplayRadius(detectSpellRadius);
+			}
 		}
 		else
 		{
-			extraMarkersManager->SetAliveActorsDisplayRadius(a_detectEffect->effect->GetArea());
+			std::uint32_t currentAliveActorDisplayRadius = extraMarkersManager->GetAliveActorsDisplayRadius();
+
+			if (detectSpellRadius > currentAliveActorDisplayRadius)
+			{
+				extraMarkersManager->SetAliveActorsDisplayRadius(detectSpellRadius);
+			}
 		}
 	}
 
 	hooks::DetectLifeEffect::Update(a_detectEffect, a_delta);
 }
 
+void ScriptEffectUpdate(RE::ScriptEffect* a_scriptEffect, float a_delta)
+{
+	if (settings::mapmenu::localMapShowActorsOnlyWithDetectSpell)
+	{
+		// Aura Whisper spell IDs
+		static constexpr RE::FormID Laas = 0x8AFCC;
+		static constexpr RE::FormID LaasYah = 0x8AFCD;
+		static constexpr RE::FormID LaasYahNir = 0x8AFCE;
+
+		RE::FormID thuum = a_scriptEffect->spell->GetFormID();
+
+		if (thuum == Laas || thuum == LaasYah || thuum == LaasYahNir)
+		{
+			std::uint32_t scriptSpellRadius = a_scriptEffect->effect->GetArea();
+
+			auto extraMarkersManager = LMU::ExtraMarkersManager::GetSingleton();
+
+			std::uint32_t currentUndeadActorDisplayRadius = extraMarkersManager->GetUndeadActorsDisplayRadius();
+
+			if (scriptSpellRadius > currentUndeadActorDisplayRadius)
+			{
+				extraMarkersManager->SetUndeadActorsDisplayRadius(scriptSpellRadius);
+			}
+
+			std::uint32_t currentAliveActorDisplayRadius = extraMarkersManager->GetAliveActorsDisplayRadius();
+
+			if (scriptSpellRadius > currentAliveActorDisplayRadius)
+			{
+				extraMarkersManager->SetAliveActorsDisplayRadius(scriptSpellRadius);
+			}
+		}
+	}
+
+	hooks::ScriptEffect::Update(a_scriptEffect, a_delta);
+}
+
 RE::BSContainer::ForEachResult VisitStopHitEffects(RE::StopHitEffectsVisitor* a_stopHitEffectVisitor, RE::ReferenceEffect* a_effect)
 {
-	if (auto activeEffectController = skyrim_cast<RE::ActiveEffectReferenceEffectController*>(a_effect->controller))
+	if (settings::mapmenu::localMapShowActorsOnlyWithDetectSpell)
 	{
-		if (auto detectEffect = skyrim_cast<RE::DetectLifeEffect*>(activeEffectController->effect))
+		if (auto activeEffectController = skyrim_cast<RE::ActiveEffectReferenceEffectController*>(a_effect->controller))
 		{
-			if (settings::mapmenu::localMapShowActorsOnlyWithDetectSpell)
+			if (auto detectEffect = skyrim_cast<RE::DetectLifeEffect*>(activeEffectController->effect))
+			{
+				// Maybe here list hit effects that are going to be detached after?
+			}
+			else if (auto scriptEffect = skyrim_cast<RE::ScriptEffect*>(activeEffectController->effect))
 			{
 				// Maybe here list hit effects that are going to be detached after?
 			}
@@ -294,12 +353,13 @@ void DetachShaderReferenceEffect(RE::ShaderReferenceEffect* a_effect)
 		// Detachment of the shader has a delay of a couple of seconds after the detect life
 		// effect is gone. When we enter here, a_effect->controller == nullptr, so we cannot
 		// check the source of the shader effect.
-		// Detach both blindly, if any is kept by `DetectLifeEffect::Update', it will be shown again
+		// Detach both blindly, if any is kept by `ActiveEffect::Update', it will be shown again
 
 		auto extraMarkersManager = LMU::ExtraMarkersManager::GetSingleton();
 
-		extraMarkersManager->SetDeadActorsDisplayRadius(0);
 		extraMarkersManager->SetAliveActorsDisplayRadius(0);
+		extraMarkersManager->SetUndeadActorsDisplayRadius(0);
+		extraMarkersManager->SetDeadActorsDisplayRadius(0);
 	}
 
 	hooks::ShaderReferenceEffect::DetachImpl(a_effect);

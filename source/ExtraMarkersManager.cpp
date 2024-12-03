@@ -85,7 +85,7 @@ namespace RE
 
 namespace LMU
 {
-	void ExtraMarkersManager::AddExtraMarker(RE::ActorHandle& a_actorHandle, const RE::NiPointer<RE::Actor>& a_actor,
+	void ExtraMarkersManager::AddExtraMarker(RE::ActorHandle& a_actorHandle, RE::Actor* a_actor,
 											 RE::BSTArray<RE::MapMenuMarker>& a_mapMarkers)
 	{
 		RE::MapMenuMarker mapMarker
@@ -107,53 +107,42 @@ namespace LMU
 	{
 		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
 		RE::BSTArray<RE::ActorHandle>& actorHandles = RE::ProcessLists::GetSingleton()->highActorHandles;
-		RE::BSTArray<RE::ActorHandle>& enemyHandles = REL::Module::IsVR() ? player->GetVRInfoRuntimeData()->actorsToDisplayOnTheHUDArray : player->GetInfoRuntimeData().actorsToDisplayOnTheHUDArray;
+		RE::BSTArray<RE::ActorHandle>& enemyHandles = REL::Module::IsVR() ? player->GetVRInfoRuntimeData()->actorsToDisplayOnTheHUDArray :
+																			player->GetInfoRuntimeData().actorsToDisplayOnTheHUDArray;
 
 		for (RE::ActorHandle& actorHandle : actorHandles)
 		{
-			if (RE::NiPointer<RE::Actor> actor = actorHandle.get())
+			if (RE::Actor* actor = actorHandle.get().get())
 			{
 				float distance = actor->GetDistance(player);
 
-				bool isActorEnemy = false;
+				bool isDead = Actor__IsDead(actor);
 
-				for (RE::ActorHandle& enemyActorHandle : enemyHandles)
+				if (isDead)
 				{
-					if (actorHandle == enemyActorHandle)
+					if (distance <= deadActorsDisplayRadius)
 					{
-						isActorEnemy = true;
-
-						if (distance <= aliveActorsDisplayRadius ||
-							(Actor__IsUndead(actor.get()) && distance <= deadActorsDisplayRadius))
-						{
-							AddExtraMarker(actorHandle, actor, a_mapMarkers);
-						}
-
-						break;
-					}
-				}
-
-				if (!isActorEnemy)
-				{
-					if (Actor__IsDead(actor.get()))
-					{
-						if (distance <= deadActorsDisplayRadius)
-						{
-							if (RE::TESObjectREFR_HasAnyDroppedItem(actor.get()))
-							{
-								AddExtraMarker(actorHandle, actor, a_mapMarkers);
-							}
-						}
-					}
-					else
-					{
-						if (distance <= aliveActorsDisplayRadius ||
-							(Actor__IsUndead(actor.get()) && distance <= deadActorsDisplayRadius))
+						if (RE::TESObjectREFR_HasAnyDroppedItem(actor))
 						{
 							AddExtraMarker(actorHandle, actor, a_mapMarkers);
 						}
 					}
 				}
+				else
+				{
+					bool isUndead = !isDead ? Actor__IsUndead(actor) : false;
+					bool isAlive = !isDead && !isUndead;
+
+					if ((isAlive && distance <= aliveActorsDisplayRadius) ||
+						(isUndead && distance <= undeadActorsDisplayRadius))
+					{
+						AddExtraMarker(actorHandle, actor, a_mapMarkers);
+					}
+				}
+
+				
+
+				
 			}
 		}
 	}
@@ -176,44 +165,49 @@ namespace LMU
 
 		for (RE::ActorHandle& actorHandle : actorHandles)
 		{
-			if (RE::NiPointer<RE::Actor> actor = actorHandle.get())
+			if (RE::Actor* actor = actorHandle.get().get())
 			{
 				float distance = actor->GetDistance(player);
 
-				bool isActorEnemy = false;
+				bool isDead = Actor__IsDead(actor);
 
-				for (RE::ActorHandle& enemyActorHandle : enemyHandles)
+				if (isDead)
 				{
-					if (actorHandle == enemyActorHandle)
+					if (distance <= deadActorsDisplayRadius)
 					{
-						isActorEnemy = true;
-
-						if (distance <= aliveActorsDisplayRadius ||
-							(Actor__IsUndead(actor.get()) && distance <= deadActorsDisplayRadius))
+						if (RE::TESObjectREFR_HasAnyDroppedItem(actor))
 						{
-							extraMarkersData.PushBack(ExtraMarker::Type::kEnemy);
+							extraMarkersData.PushBack(ExtraMarker::Type::kDead);
 						}
-
-						break;
 					}
 				}
-				
-				if (!isActorEnemy)
+				else
 				{
-					if (Actor__IsDead(actor.get()))
+					bool isUndead = !isDead ? Actor__IsUndead(actor) : false;
+					bool isAlive = !isDead && !isUndead;
+
+					bool isActorEnemy = false;
+
+					for (RE::ActorHandle& enemyActorHandle : enemyHandles)
 					{
-						if (distance <= deadActorsDisplayRadius)
+						if (actorHandle == enemyActorHandle)
 						{
-							if (RE::TESObjectREFR_HasAnyDroppedItem(actor.get()))
+							isActorEnemy = true;
+
+							if ((isAlive && distance <= aliveActorsDisplayRadius) ||
+								(isUndead && distance <= undeadActorsDisplayRadius))
 							{
-								extraMarkersData.PushBack(ExtraMarker::Type::kDead);
+								extraMarkersData.PushBack(ExtraMarker::Type::kEnemy);
 							}
+
+							break;
 						}
 					}
-					else
+
+					if (!isActorEnemy)
 					{
-						if (distance <= aliveActorsDisplayRadius ||
-							(Actor__IsUndead(actor.get()) && distance <= deadActorsDisplayRadius))
+						if ((isAlive && distance <= aliveActorsDisplayRadius) ||
+							(isUndead && distance <= undeadActorsDisplayRadius))
 						{
 							if (actor->IsHostileToActor(player))
 							{

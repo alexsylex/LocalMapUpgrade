@@ -29,6 +29,8 @@ namespace settings
 				MakeSetting("bMapLocalShowHostileActors:MapMenu", localMapShowHostileActors),
 				MakeSetting("bMapLocalShowGuardActors:MapMenu", localMapShowGuardActors),
 				MakeSetting("bMapLocalShowDeadActors:MapMenu", localMapShowDeadActors),
+				MakeSetting("bMapLocalShowTeammateActors:MapMenu", localMapShowTeammateActors),
+				MakeSetting("bMapLocalShowNeutralActors:MapMenu", localMapShowNeutralActors),
 				MakeSetting("bImmersiveMode:MapMenu", localMapShowActorsOnlyWithDetectSpell)
 			);
 		}
@@ -52,6 +54,8 @@ namespace settings
 			localMapShowHostileActors = iniSettingCollection->GetSetting<bool>("bMapLocalShowHostileActors:MapMenu");
 			localMapShowGuardActors = iniSettingCollection->GetSetting<bool>("bMapLocalShowGuardActors:MapMenu");
 			localMapShowDeadActors = iniSettingCollection->GetSetting<bool>("bMapLocalShowDeadActors:MapMenu");
+			localMapShowTeammateActors = iniSettingCollection->GetSetting<bool>("bMapLocalShowTeammateActors:MapMenu");
+			localMapShowNeutralActors = iniSettingCollection->GetSetting<bool>("bMapLocalShowNeutralActors:MapMenu");
 			localMapShowActorsOnlyWithDetectSpell = iniSettingCollection->GetSetting<bool>("bImmersiveMode:MapMenu");
 		}
 	}

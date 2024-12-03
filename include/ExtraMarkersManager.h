@@ -57,18 +57,23 @@ namespace LMU
 
 		void AddExtraMarkers(RE::BSTArray<RE::MapMenuMarker>& a_mapMarkers);
 
+		std::uint32_t GetAliveActorsDisplayRadius() const { return aliveActorsDisplayRadius / feetToUnits; }
+		std::uint32_t GetUndeadActorsDisplayRadius() const { return undeadActorsDisplayRadius / feetToUnits; }
+		std::uint32_t GetDeadActorsDisplayRadius() const { return deadActorsDisplayRadius / feetToUnits; }
+
 		void SetAliveActorsDisplayRadius(std::uint32_t a_radius) { aliveActorsDisplayRadius = a_radius * feetToUnits; }
+		void SetUndeadActorsDisplayRadius(std::uint32_t a_radius) { undeadActorsDisplayRadius = a_radius * feetToUnits; }
 		void SetDeadActorsDisplayRadius(std::uint32_t a_radius) { deadActorsDisplayRadius = a_radius * feetToUnits; }
 
 	private:
-		static void AddExtraMarker(RE::ActorHandle& a_actorHandle, const RE::NiPointer<RE::Actor>& actor,
-								   RE::BSTArray<RE::MapMenuMarker>& a_mapMarkers);
+		static void AddExtraMarker(RE::ActorHandle& a_actorHandle, RE::Actor* actor, RE::BSTArray<RE::MapMenuMarker>& a_mapMarkers);
 
 		void PostCreateMarkersImpl(RE::GFxValue& a_iconDisplay);
 
 		static inline ExtraMarkersManager* singleton;
 
 		std::uint32_t aliveActorsDisplayRadius = settings::mapmenu::localMapShowActorsOnlyWithDetectSpell ? 0 : std::numeric_limits<std::uint32_t>::max();
+		std::uint32_t undeadActorsDisplayRadius = settings::mapmenu::localMapShowActorsOnlyWithDetectSpell ? 0 : std::numeric_limits<std::uint32_t>::max();
 		std::uint32_t deadActorsDisplayRadius = settings::mapmenu::localMapShowActorsOnlyWithDetectSpell ? 0 : std::numeric_limits<std::uint32_t>::max();
 	};
 }

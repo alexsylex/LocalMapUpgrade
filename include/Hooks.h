@@ -26,6 +26,8 @@ bool ToggleFogOfWar(const RE::SCRIPT_PARAMETER* a_paramInfo, RE::SCRIPT_FUNCTION
 
 void DetectLifeEffectUpdate(RE::DetectLifeEffect* a_detectLifeEffect, float a_delta);
 
+void ScriptEffectUpdate(RE::ScriptEffect* a_detectLifeEffect, float a_delta);
+
 RE::BSContainer::ForEachResult VisitStopHitEffects(RE::StopHitEffectsVisitor* a_stopHitEffectVisitor, RE::ReferenceEffect* a_effect);
 
 void DetachShaderReferenceEffect(RE::ShaderReferenceEffect* a_effect);
@@ -85,23 +87,22 @@ namespace hooks
 
 	inline REL::Relocation<void (*)(RE::BSTArray<RE::MapMenuMarker>&, RE::BSTArray<RE::BGSInstancedQuestObjective>, std::uint32_t)> AddQuestMarkersToMap;
 
+	class ScriptEffect
+	{
+	public:
+		static inline REL::Relocation<std::uintptr_t> vTable{ RE::VTABLE_ScriptEffect[0] };
+
+		static inline REL::Relocation<void (RE::ScriptEffect::*)(float)> Update;
+	};
+
 	class DetectLifeEffect
 	{
 	public:
 		static inline REL::Relocation<std::uintptr_t> vTable{ RE::VTABLE_DetectLifeEffect[0] };
 
 		static inline REL::Relocation<void (RE::DetectLifeEffect::*)(float)> Update;
-		static inline REL::Relocation<void (RE::DetectLifeEffect::*)()> Finish;
 	};
 
-	class ActiveReferenceEffectController
-	{
-	public:
-		static inline REL::Relocation<std::uintptr_t> vTable{ RE::VTABLE_ActiveEffectReferenceEffectController[0] };
-
-		static inline REL::Relocation<void (RE::DetectLifeEffect::*)(float)> Update;
-		static inline REL::Relocation<void (RE::DetectLifeEffect::*)()> Finish;
-	};
 
 	class StopHitEffectsVisitor
 	{
@@ -174,6 +175,8 @@ namespace hooks
 		BSWaterShader::SetupTechnique = BSWaterShader::vTable.write_vfunc(2, &SetupWaterShaderTechnique);
 
 		DetectLifeEffect::Update = DetectLifeEffect::vTable.write_vfunc(4, DetectLifeEffectUpdate);
+
+		ScriptEffect::Update = ScriptEffect::vTable.write_vfunc(4, ScriptEffectUpdate);
 
 		StopHitEffectsVisitor::Visit = StopHitEffectsVisitor::vTable.write_vfunc(1, VisitStopHitEffects);
 
