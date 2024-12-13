@@ -103,8 +103,20 @@ namespace LMU
 		a_mapMarkers.push_back(mapMarker);
 	}
 
-	void ExtraMarkersManager::AddExtraMarkers(RE::BSTArray<RE::MapMenuMarker>& a_mapMarkers)
+	void ExtraMarkersManager::AddExtraMarkers(RE::LocalMapMenu& a_localMapMenu)
 	{
+		RE::GFxValue extraMarkersData;
+		a_localMapMenu.GetRuntimeData().iconDisplay.GetMember("ExtraMarkerData", &extraMarkersData);
+
+		if (!extraMarkersData.IsArray())
+		{
+			return;
+		}
+
+		extraMarkersData.ClearElements();
+
+		RE::BSTArray<RE::MapMenuMarker>& mapMarkers = a_localMapMenu.mapMarkers;
+
 		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
 		RE::BSTArray<RE::ActorHandle>& actorHandles = RE::ProcessLists::GetSingleton()->highActorHandles;
 		RE::BSTArray<RE::ActorHandle>& enemyHandles = REL::Module::IsVR() ? player->GetVRInfoRuntimeData()->actorsToDisplayOnTheHUDArray :
@@ -124,115 +136,84 @@ namespace LMU
 					{
 						if (RE::TESObjectREFR_HasAnyDroppedItem(actor))
 						{
-							AddExtraMarker(actorHandle, actor, a_mapMarkers);
+							if (settings::mapmenu::localMapShowDeadActors)
+							{
+								AddExtraMarker(actorHandle, actor, mapMarkers);
+								extraMarkersData.PushBack(ExtraMarker::Type::kDead);
+							}
 						}
 					}
 				}
 				else
 				{
-					bool isUndead = !isDead ? Actor__IsUndead(actor) : false;
-					bool isAlive = !isDead && !isUndead;
+					bool isUndead = Actor__IsUndead(actor);
+					bool isAlive = !isUndead;
 
 					if ((isAlive && distance <= aliveActorsDisplayRadius) ||
 						(isUndead && distance <= undeadActorsDisplayRadius))
 					{
-						AddExtraMarker(actorHandle, actor, a_mapMarkers);
+						bool isEnemy = false;
+
+						for (RE::ActorHandle& enemyActorHandle : enemyHandles)
+						{
+							if (actorHandle == enemyActorHandle)
+							{
+								isEnemy = true;
+								break;
+							}
+						}
+
+						if (isEnemy)
+						{
+							if (settings::mapmenu::localMapShowEnemyActors)
+							{
+								AddExtraMarker(actorHandle, actor, mapMarkers);
+								extraMarkersData.PushBack(ExtraMarker::Type::kEnemy);
+							}
+						}
+						else
+						{
+							if (actor->IsPlayerTeammate())
+							{
+								if (settings::mapmenu::localMapShowTeammateActors)
+								{
+									AddExtraMarker(actorHandle, actor, mapMarkers);
+									extraMarkersData.PushBack(ExtraMarker::Type::kTeammate);
+								}
+							}
+							else if (actor->IsHostileToActor(player))
+							{
+								if (settings::mapmenu::localMapShowHostileActors)
+								{
+									AddExtraMarker(actorHandle, actor, mapMarkers);
+									extraMarkersData.PushBack(ExtraMarker::Type::kHostile);
+								}
+							}
+							else if (actor->IsGuard())
+							{
+								if (settings::mapmenu::localMapShowGuardActors)
+								{
+									AddExtraMarker(actorHandle, actor, mapMarkers);
+									extraMarkersData.PushBack(ExtraMarker::Type::kGuard);
+								}
+							}
+							else
+							{
+								if (settings::mapmenu::localMapShowNeutralActors)
+								{
+									AddExtraMarker(actorHandle, actor, mapMarkers);
+									extraMarkersData.PushBack(ExtraMarker::Type::kNeutral);
+								}
+							}
+						}
 					}
 				}
-
-				
-
-				
 			}
 		}
 	}
 
-	void ExtraMarkersManager::PostCreateMarkersImpl(RE::GFxValue& a_iconDisplay)
+	void ExtraMarkersManager::PostCreateMarkers(RE::GFxValue& a_iconDisplay)
 	{
-		RE::GFxValue extraMarkersData;
-		a_iconDisplay.GetMember("ExtraMarkerData", &extraMarkersData);
-
-		if (!extraMarkersData.IsArray())
-		{
-			return;
-		}
-
-		extraMarkersData.ClearElements();
-
-		RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();
-		RE::BSTArray<RE::ActorHandle>& actorHandles = RE::ProcessLists::GetSingleton()->highActorHandles;
-		RE::BSTArray<RE::ActorHandle>& enemyHandles = REL::Module::IsVR() ? player->GetVRInfoRuntimeData()->actorsToDisplayOnTheHUDArray : player->GetInfoRuntimeData().actorsToDisplayOnTheHUDArray;
-
-		for (RE::ActorHandle& actorHandle : actorHandles)
-		{
-			if (RE::Actor* actor = actorHandle.get().get())
-			{
-				float distance = actor->GetDistance(player);
-
-				bool isDead = Actor__IsDead(actor);
-
-				if (isDead)
-				{
-					if (distance <= deadActorsDisplayRadius)
-					{
-						if (RE::TESObjectREFR_HasAnyDroppedItem(actor))
-						{
-							extraMarkersData.PushBack(ExtraMarker::Type::kDead);
-						}
-					}
-				}
-				else
-				{
-					bool isUndead = !isDead ? Actor__IsUndead(actor) : false;
-					bool isAlive = !isDead && !isUndead;
-
-					bool isActorEnemy = false;
-
-					for (RE::ActorHandle& enemyActorHandle : enemyHandles)
-					{
-						if (actorHandle == enemyActorHandle)
-						{
-							isActorEnemy = true;
-
-							if ((isAlive && distance <= aliveActorsDisplayRadius) ||
-								(isUndead && distance <= undeadActorsDisplayRadius))
-							{
-								extraMarkersData.PushBack(ExtraMarker::Type::kEnemy);
-							}
-
-							break;
-						}
-					}
-
-					if (!isActorEnemy)
-					{
-						if ((isAlive && distance <= aliveActorsDisplayRadius) ||
-							(isUndead && distance <= undeadActorsDisplayRadius))
-						{
-							if (actor->IsHostileToActor(player))
-							{
-								extraMarkersData.PushBack(ExtraMarker::Type::kHostile);
-							}
-							else if (actor->IsGuard())
-							{
-								extraMarkersData.PushBack(ExtraMarker::Type::kGuard);
-							}
-							else if (actor->IsPlayerTeammate())
-							{
-								extraMarkersData.PushBack(ExtraMarker::Type::kTeammate);
-							}
-							else
-							{
-								extraMarkersData.PushBack(ExtraMarker::Type::kNeutral);
-							}
-						}
-					}
-				}
-			}
-		}
-
-		a_iconDisplay.Invoke("PostCreateMarkers", std::array<RE::GFxValue, 6>{ settings::mapmenu::localMapShowEnemyActors, settings::mapmenu::localMapShowHostileActors,
-																			   settings::mapmenu::localMapShowGuardActors, settings::mapmenu::localMapShowDeadActors,
-																			   settings::mapmenu::localMapShowTeammateActors, settings::mapmenu::localMapShowNeutralActors });
+		a_iconDisplay.Invoke("PostCreateMarkers");
 	}
 }

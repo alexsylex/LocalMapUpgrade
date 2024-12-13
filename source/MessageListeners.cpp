@@ -51,10 +51,6 @@ void SKSEMessageListener(SKSE::MessagingInterface::Message* a_msg)
 		DispatchMessage(pixelShaderPropertiesHook);
 
 		LMU::ExtraMarkersManager::InitSingleton();
-
-		LMU::API::PostCreateMarkersHookMessage postCreateMarkersHook;
-		postCreateMarkersHook.PostCreateMarkers = &LMU::ExtraMarkersManager::PostCreateMarkers;
-		DispatchMessage(postCreateMarkersHook);
 	}
 }
 

@@ -23,8 +23,7 @@ namespace LMU
 		{
 			enum Type : std::uint32_t
 			{
-				kPixelShaderPropertiesHook,
-				kPostCreateMarkersHook
+				kPixelShaderPropertiesHook
 			};
 		};
 
@@ -34,13 +33,6 @@ namespace LMU
 
 			void (*SetPixelShaderProperties)(PixelShaderProperty::Shape a_shape, PixelShaderProperty::Style a_style) = {};
 			void (*GetPixelShaderProperties)(PixelShaderProperty::Shape& a_shape, PixelShaderProperty::Style& a_style) = {};
-		};
-
-		struct PostCreateMarkersHookMessage : Message
-		{
-			static constexpr inline Type type = Type::kPostCreateMarkersHook;
-
-			void (*PostCreateMarkers)(RE::GFxValue&) = {};
 		};
 
 		template <typename T>

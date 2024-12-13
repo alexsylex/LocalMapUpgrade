@@ -53,9 +53,9 @@ namespace LMU
 
 		static ExtraMarkersManager* GetSingleton() { return singleton; }
 
-		static void PostCreateMarkers(RE::GFxValue& a_iconDisplay) { singleton->PostCreateMarkersImpl(a_iconDisplay); }
+		void AddExtraMarkers(RE::LocalMapMenu& a_localMapMenu);
 
-		void AddExtraMarkers(RE::BSTArray<RE::MapMenuMarker>& a_mapMarkers);
+		void PostCreateMarkers(RE::GFxValue& a_iconDisplay);
 
 		std::uint32_t GetAliveActorsDisplayRadius() const { return aliveActorsDisplayRadius / feetToUnits; }
 		std::uint32_t GetUndeadActorsDisplayRadius() const { return undeadActorsDisplayRadius / feetToUnits; }
@@ -67,8 +67,6 @@ namespace LMU
 
 	private:
 		static void AddExtraMarker(RE::ActorHandle& a_actorHandle, RE::Actor* actor, RE::BSTArray<RE::MapMenuMarker>& a_mapMarkers);
-
-		void PostCreateMarkersImpl(RE::GFxValue& a_iconDisplay);
 
 		static inline ExtraMarkersManager* singleton;
 

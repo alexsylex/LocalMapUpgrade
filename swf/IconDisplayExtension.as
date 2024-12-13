@@ -45,24 +45,17 @@ _parent.IconDisplay.PostCreateMarkers = function(a_showEnemyMarkers:Boolean, a_s
 
 		if (createIconType == 0)
 		{
+			// Replace with the extra marker icon
 			var marker:MovieClip = markers[i];
 
 			var extraMarkerType:String = ExtraMapMarker.IconTypes[this.ExtraMarkerData[j]];
 
 			j++;
 
-			if ((extraMarkerType == "EnemyMarker"    && a_showEnemyMarkers) ||
-				(extraMarkerType == "HostileMarker"  && a_showHostileMarkers) ||
-				(extraMarkerType == "GuardMarker"    && a_showGuardMarkers) ||
-				(extraMarkerType == "DeadMarker"     && a_showDeadMarkers) ||
-				(extraMarkerType == "TeammateMarker" && a_showTeammateMarkers) ||
-				(extraMarkerType == "NeutralMarker"  && a_showNeutralMarkers))
-			{
-				var extraMarker = extraMarkerContainer.attachMovie(extraMarkerType, "ExtraMarker" + i, getNextHighestDepth());
+			var extraMarker = extraMarkerContainer.attachMovie(extraMarkerType, "ExtraMarker" + i, getNextHighestDepth());
 
-				extraMarkers.push(extraMarker);
-				markers[i] = extraMarker;
-			}
+			extraMarkers.push(extraMarker);
+			markers[i] = extraMarker;
 
 			marker.removeMovieClip();
 		}

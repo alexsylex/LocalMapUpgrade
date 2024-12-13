@@ -20,7 +20,9 @@ bool FakeNotSmallWorld(RE::TESWorldSpace* a_worldSpace)
 void AddExtraAndQuestMarkersToMap(RE::BSTArray<RE::MapMenuMarker>& a_mapMarkers, RE::BSTArray<RE::BGSInstancedQuestObjective>& a_objectives,
 								  std::uint32_t a_arg3)
 {
-	LMU::ExtraMarkersManager::GetSingleton()->AddExtraMarkers(a_mapMarkers);
+	auto& localMapMenu = *(RE::LocalMapMenu*)((std::uintptr_t)&a_mapMarkers - offsetof(RE::LocalMapMenu, mapMarkers));
+
+	LMU::ExtraMarkersManager::GetSingleton()->AddExtraMarkers(localMapMenu);
 
 	hooks::AddQuestMarkersToMap(a_mapMarkers, a_objectives, a_arg3);
 }
